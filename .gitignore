@@ -94,7 +94,7 @@ dkms.conf
 
 # CMake
 cmake-build-*/
-build/
+build-*/
 install/
 
 # Mongo Explorer plugin
