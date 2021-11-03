@@ -3,9 +3,23 @@ project(smart_offload)
 
 set(CMAKE_C_STANDARD 11)
 
-MESSAGE(STATUS “$ENV{PKG_CONFIG_PATH}”)
+# configure build type
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+    message(STATUS "No CMAKE_BUILD_TYPE selected, defaulting to ${CMAKE_BUILD_TYPE}")
+else ()
+    message(STATUS "Predefined CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE} ")
+endif ()
 
-set(CMAKE_C_FLAGS "-march=native")
+if (CMAKE_BUILD_TYPE MATCHES Release)
+    set(CMAKE_C_FLAGS_RELEASE "-O3")
+    add_definitions(-DRELEASE)
+else ()
+    set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
+endif ()
+
+# avoid Apple Silicon impact
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
 # import dpdk library
 find_package(PkgConfig REQUIRED)
