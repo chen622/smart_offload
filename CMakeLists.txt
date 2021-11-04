@@ -40,6 +40,8 @@ set_target_properties(
 )
 configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
 
+include_directories(include)
+
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build)
 
 add_subdirectory(src)
