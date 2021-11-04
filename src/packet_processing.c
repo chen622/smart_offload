@@ -20,7 +20,11 @@
  * SOFTWARE.
 */
 
-int packet_processing(void * args) {
+#include "smart_offload.h"
 
+int packet_processing(void *args) {
+    unsigned lcore_id;
+    lcore_id = rte_lcore_id();
+    printf("hello from core %u\n", lcore_id);
     return 0;
 }

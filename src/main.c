@@ -19,10 +19,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
-#include <stdio.h>
-#include <signal.h>
-#include <zlog.h>
-#include <rte_ethdev.h>
+
+#include "smart_offload.h"
 
 #ifdef RELEASE
 char *zlog_conf = "/etc/natexp/zlog.conf";
@@ -90,7 +88,13 @@ int main(int argc, char **argv) {
 
     uint16_t port_id;
     RTE_ETH_FOREACH_DEV(port_id) {
+    }
 
+    uint16_t lcore_id;
+    RTE_LCORE_FOREACH_WORKER(lcore_id) {
+        /* Simpler equivalent. 8< */
+        rte_eal_remote_launch(packet_processing, NULL, lcore_id);
+        /* >8 End of simpler equivalent. */
     }
 
     smto_exit(EXIT_SUCCESS, "all core stop running\n");

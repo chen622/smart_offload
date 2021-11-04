@@ -20,11 +20,17 @@
  * SOFTWARE.
 */
 
-#include "smart_offload.h"
+#ifndef SMART_OFFLOAD_SMART_OFFLOAD_H
+#define SMART_OFFLOAD_SMART_OFFLOAD_H
+
+#include <stdio.h>
+#include <signal.h>
+#include <zlog.h>
+#include <rte_ethdev.h>
 
 
-void init_port() {
-    smto_exit(EXIT_FAILURE,"Error during getting device (port ) info: \n");
-    return;
-}
+void smto_exit(int exit_code, const char *format);
 
+int packet_processing(void * args);
+
+#endif //SMART_OFFLOAD_SMART_OFFLOAD_H
