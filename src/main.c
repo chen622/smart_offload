@@ -28,57 +28,68 @@ char *zlog_conf = "/etc/natexp/zlog.conf";
 char *zlog_conf = "conf/zlog.conf";
 #endif
 
-/* Shutdown flag */
-volatile bool force_quit;
 
-
-/* Shutdown event has been triggered */
 static void signal_handler(int signum) {
     if (signum == SIGINT || signum == SIGTERM) {
-        printf("\n\nSignal %d received, preparing to exit...\n",
-               signum);
+        dzlog_debug("\n\nSignal %d received, preparing to exit...\n",
+                    signum);
         force_quit = true;
     }
 }
 
 void smto_exit(int exit_code, const char *format) {
+    if (exit_code == EXIT_SUCCESS) {
+        dzlog_info("%s", format);
+    } else {
+        dzlog_error("%s", format);
+    }
+
     zlog_fini();
+
+    uint16_t port_id;
+    RTE_ETH_FOREACH_DEV(port_id) {
+        rte_eth_dev_stop(port_id);
+        rte_eth_dev_close(port_id);
+    }
+    /* clean up the EAL */
+    rte_eal_cleanup();
+
     rte_exit(exit_code, "%s", format);
 }
 
 int main(int argc, char **argv) {
     /* General return value */
     int ret;
+    char *err_msg;
     /* Quantity of ports */
-    uint16_t port_amount;
-    zlog_category_t *c;
+    uint16_t port_quantity;
 
+    /* setup the environment of DPDK */
     ret = rte_eal_init(argc, argv);
     if (ret < 0) {
         smto_exit(EXIT_FAILURE, "invalid EAL arguments\n");
     }
 
-    ret = zlog_init("conf/zlog.conf");
+    /* setup zlog */
+    ret = dzlog_init("conf/zlog.conf", "main");
     if (ret) {
         smto_exit(EXIT_FAILURE, "zlog init failed\n");
     }
 
-    c = zlog_get_category("main");
-    if (!c) {
-        smto_exit(EXIT_FAILURE, "zlog main category get failed\n");
-    }
-
+    /* listen to the shutdown event */
     force_quit = false;
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    port_amount = rte_eth_dev_count_avail();
-    if (port_amount < 2) {
+    /* check the quantity of network ports */
+    port_quantity = rte_eth_dev_count_avail();
+    if (port_quantity < 2) {
         smto_exit(EXIT_FAILURE, "no enough Ethernet ports found\n");
-    } else if (port_amount > 2) {
-        zlog_warn(c, "%d ports detected, but we only use two\n", port_amount);
+    } else if (port_quantity > 2) {
+        dzlog_warn("%d ports detected, but we only use two\n", port_quantity);
     }
 
+    /* initialize the memory pool of dpdk */
     struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", 40960, 128, 0,
                                                             RTE_MBUF_DEFAULT_BUF_SIZE,
                                                             rte_socket_id());
@@ -87,7 +98,33 @@ int main(int argc, char **argv) {
     }
 
     uint16_t port_id;
+    uint16_t prev_port_id = RTE_MAX_ETHPORTS;
+    uint16_t port_num = 0;
     RTE_ETH_FOREACH_DEV(port_id) {
+        /* initialize the network port and do some configure */
+        init_port(port_id, mbuf_pool);
+
+//        /* setup hairpin queues */
+//        ret = setup_hairpin_queues(port_id, prev_port_id,
+//                                   port_num);
+//        if (ret) {
+//            sprintf(err_msg, "fail to setup hairpin queues"
+//                             " on port: %u\n", port_id);
+//            smto_exit(EXIT_FAILURE, err_msg);
+//        }
+//        port_num++;
+//        prev_port_id = port_id;
+
+        /* start the port */
+        ret = rte_eth_dev_start(port_id);
+        if (ret < 0) {
+            sprintf(err_msg, "fail to start network device: err=%d, port=%u\n",
+                    ret, port_id);
+            smto_exit(EXIT_FAILURE, err_msg);
+        }
+
+        /* check the port status */
+        assert_link_status(port_id);
     }
 
     uint16_t lcore_id;
@@ -97,5 +134,5 @@ int main(int argc, char **argv) {
         /* >8 End of simpler equivalent. */
     }
 
-    smto_exit(EXIT_SUCCESS, "all core stop running\n");
+    smto_exit(EXIT_SUCCESS, ":: SUCCESS! all core stop running!\n");
 }
