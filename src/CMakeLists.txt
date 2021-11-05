@@ -1,4 +1,4 @@
-set(SRC main.c packet_processing.c setup.c)
+set(SRC main.c packet_processing.c setup.c hairpin.c)
 
 add_executable(smart_offload ${SRC})
 

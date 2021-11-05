@@ -28,9 +28,56 @@
 #include <zlog.h>
 #include <rte_ethdev.h>
 
+#define CHECK_INTERVAL 1000  /* 100ms */
+#define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
 
+/**
+ * Shutdown flag
+ */
+volatile bool force_quit;
+
+/**
+ * The quantity of different queues.
+ */
+static uint16_t general_queues_quantity = 8;
+static uint16_t hairpin_queues_quantity = 1;
+
+/**
+ * Shutdown event has been triggered.
+ *
+ * @param exit_code
+ *   Is shutdown by a failure or not.
+ *   - EXIT_SUCCESS	0
+ *   - EXIT_FAILURE	1
+ * @param format
+ *   The message to describe the event.
+ */
 void smto_exit(int exit_code, const char *format);
 
-int packet_processing(void * args);
+/**
+ * Configure a network port and initialize the rx/tx queues.
+ *
+ * @param port_id
+ *   The ID of port which will be configured.
+ * @param mbuf_pool
+ *   The mempool used to initialize queues.
+ * @return
+ *   - 0 : Success.
+ */
+int init_port(int port_id, struct rte_mempool *mbuf_pool);
+
+/**
+ * Check the status of the network port.
+ *
+ * @param port_id
+ *   The port will be checked.
+ */
+void assert_link_status(uint16_t port_id);
+
+/**
+ * Run on the worker core to process packets from rx queues.
+ *
+ */
+int packet_processing(void *args);
 
 #endif //SMART_OFFLOAD_SMART_OFFLOAD_H
