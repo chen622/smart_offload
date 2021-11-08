@@ -9,8 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,4 +21,163 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
+#include "smart_offload.h"
 
+
+/**
+ * Setup hairpin queue.
+ *
+ * @param port_id The first port.
+ * @param prev_port_id The second port.
+ * @param port_num Used to mark is the odd port.
+ * @return
+ *   - 0 : Success
+ */
+static int setup_hairpin_queues(uint16_t port_id, uint16_t prev_port_id, uint16_t port_num) {
+    /* The id of peer port */
+    uint16_t peer_port_id = RTE_MAX_ETHPORTS;
+    int ret;
+    char *err_msg;
+
+    struct rte_eth_hairpin_conf hairpin_conf = {
+            .peer_count = 1,
+            .manual_bind = 1,
+            .tx_explicit = 1,
+    };
+    struct rte_eth_dev_info dev_info = {0};
+    struct rte_eth_dev_info peer_dev_info = {0};
+    struct rte_eth_rxq_info rxq_info = {0};
+    struct rte_eth_txq_info txq_info = {0};
+
+    uint16_t total_rxq_quantity, general_rxq_quantity, general_txq_quantity, peer_general_rxq_quantity, peer_general_txq_quantity;
+
+    /* get the information of port */
+    ret = rte_eth_dev_info_get(port_id, &dev_info);
+    if (ret) {
+        sprintf(err_msg, "can not get device info, port id: %u\n", port_id);
+        smto_exit(EXIT_FAILURE, err_msg);
+    }
+    general_rxq_quantity = dev_info.nb_rx_queues - HAIRPIN_QUEUES_QUANTITY;
+    general_txq_quantity = dev_info.nb_tx_queues - HAIRPIN_QUEUES_QUANTITY;
+    total_rxq_quantity = dev_info.nb_rx_queues;
+
+    /* get the port to bind with */
+    if (port_num & 0x1) { /* if this port is odd, it will bind with last port */
+        peer_port_id = prev_port_id;
+    } else {
+        peer_port_id = rte_eth_find_next_owned_by(port_id + 1,
+                                                  RTE_ETH_DEV_NO_OWNER);
+        if (peer_port_id >= RTE_MAX_ETHPORTS)
+            peer_port_id = port_id;
+    }
+
+    /* get the information of peer port */
+    ret = rte_eth_dev_info_get(peer_port_id, &peer_dev_info);
+    if (ret) {
+        sprintf(err_msg, "can not get peer device info, port id: %u\n", port_id);
+        smto_exit(EXIT_FAILURE, err_msg);
+    }
+    peer_general_rxq_quantity = peer_dev_info.nb_rx_queues - HAIRPIN_QUEUES_QUANTITY;
+    peer_general_txq_quantity = peer_dev_info.nb_tx_queues - HAIRPIN_QUEUES_QUANTITY;
+
+    /* create hairpin queues on both ports*/
+    for (uint16_t hairpin_queue = general_rxq_quantity, peer_hairpin_queue = peer_general_txq_quantity;
+         hairpin_queue < total_rxq_quantity;
+         hairpin_queue++, peer_hairpin_queue++) {
+        hairpin_conf.peers[0].port = peer_port_id;
+        hairpin_conf.peers[0].queue = peer_hairpin_queue;
+        ret = rte_eth_rx_hairpin_queue_setup(
+                port_id, hairpin_queue,
+                rxq_info.nb_desc, &hairpin_conf);
+        if (ret != 0)
+            return ret;
+    }
+
+    for (uint16_t hairpin_queue = general_txq_quantity, peer_hairpin_queue = peer_general_rxq_quantity;
+         hairpin_queue < total_rxq_quantity;
+         hairpin_queue++, peer_hairpin_queue++) {
+        hairpin_conf.peers[0].port = peer_port_id;
+        hairpin_conf.peers[0].queue = peer_hairpin_queue;
+        ret = rte_eth_tx_hairpin_queue_setup(
+                port_id, hairpin_queue,
+                txq_info.nb_desc, &hairpin_conf);
+        if (ret != 0)
+            return ret;
+    }
+    return 0;
+}
+
+
+/**
+ * Bind all TX hairpin queues to the pair port RX queues.
+ *
+ * @param port_id
+ * @param direction
+ * @return
+ */
+static int hairpin_port_bind(uint16_t port_id, int direction) {
+    int i, ret = 0;
+    uint16_t peer_ports[RTE_MAX_ETHPORTS];
+    int peer_ports_num = 0;
+
+    peer_ports_num = rte_eth_hairpin_get_peer_ports(port_id,
+                                                    peer_ports, RTE_MAX_ETHPORTS, direction);
+    if (peer_ports_num < 0)
+        return peer_ports_num; /* errno. */
+    for (i = 0; i < peer_ports_num; i++) {
+        if (!rte_eth_devices[i].data->dev_started)
+            continue;
+        ret = rte_eth_hairpin_bind(port_id, peer_ports[i]);
+        if (ret)
+            return ret;
+    }
+    return ret;
+}
+
+void setup_hairpin() {
+    int ret;
+    uint16_t port_id;
+    char *err_msg;
+
+    /* setup hairpin queues */
+    uint16_t prev_port_id = RTE_MAX_ETHPORTS;
+    uint16_t port_num = 0;
+    RTE_ETH_FOREACH_DEV(port_id) {
+        ret = setup_hairpin_queues(port_id, prev_port_id, port_num);
+        if (ret) {
+            sprintf(err_msg, "failed to setup hairpin queues"
+                             " on port: %u\n", port_id);
+            smto_exit(EXIT_FAILURE, err_msg);
+        }
+        port_num++;
+        prev_port_id = port_id;
+    }
+
+    /* start the ports */
+    RTE_ETH_FOREACH_DEV(port_id) {
+        ret = rte_eth_dev_start(port_id);
+        if (ret < 0) {
+            sprintf(err_msg, "failed to start network device: err=%d, port=%u\n",
+                    ret, port_id);
+            smto_exit(EXIT_FAILURE, err_msg);
+        }
+        /* check the port status */
+        assert_link_status(port_id);
+    }
+
+    /* bind the peer ports */
+    RTE_ETH_FOREACH_DEV(port_id) {
+        /* Let's find our peer RX ports, TXQ -> RXQ. */
+        ret = hairpin_port_bind(port_id, 1);
+        if (ret) {
+            sprintf(err_msg, "failed to bind port#%u.tx with peer's rx", port_id);
+            smto_exit(EXIT_FAILURE, err_msg);
+        }
+        /* Let's find our peer TX ports, RXQ -> TXQ. */
+        ret = hairpin_port_bind(port_id, 0);
+        if (ret) {
+            sprintf(err_msg, "failed to bind port#%u.rx with peer's tx", port_id);
+            smto_exit(EXIT_FAILURE, err_msg);
+        }
+    }
+}

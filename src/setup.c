@@ -9,8 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,7 +24,7 @@
 
 #include "smart_offload.h"
 
-int init_port(int port_id, struct rte_mempool *mbuf_pool) {
+void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     int ret;
     char *err_msg = "";
 
@@ -51,7 +53,6 @@ int init_port(int port_id, struct rte_mempool *mbuf_pool) {
         smto_exit(EXIT_FAILURE, err_msg);
     }
 
-
     dzlog_debug("initializing port: %d\n", port_id);
 
     /* check offload abilities of network card */
@@ -59,8 +60,8 @@ int init_port(int port_id, struct rte_mempool *mbuf_pool) {
 
     /* configure the network card */
     ret = rte_eth_dev_configure(port_id,
-                                general_queues_quantity + hairpin_queues_quantity,
-                                general_queues_quantity + hairpin_queues_quantity, &port_conf);
+                                GENERAL_QUEUES_QUANTITY + HAIRPIN_QUEUES_QUANTITY,
+                                GENERAL_QUEUES_QUANTITY + HAIRPIN_QUEUES_QUANTITY, &port_conf);
     if (ret < 0) {
         sprintf(err_msg, "cannot configure device: err=%d, port=%u\n", ret, port_id);
         smto_exit(EXIT_FAILURE, err_msg);
@@ -69,7 +70,7 @@ int init_port(int port_id, struct rte_mempool *mbuf_pool) {
     /* configure receive port and receive queues */
     rxq_conf = dev_info.default_rxconf;
     rxq_conf.offloads = port_conf.rxmode.offloads;
-    for (int i = 0; i < general_queues_quantity; i++) {
+    for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
         ret = rte_eth_rx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &rxq_conf, mbuf_pool);
         if (ret < 0) {
             sprintf(err_msg, "Rx queue setup failed: err=%d, port=%u\n", ret, port_id);
@@ -80,7 +81,7 @@ int init_port(int port_id, struct rte_mempool *mbuf_pool) {
     /* configure transmit port and transmit queues */
     txq_conf = dev_info.default_txconf;
     txq_conf.offloads = port_conf.txmode.offloads;
-    for (int i = 0; i < general_queues_quantity; i++) {
+    for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
         ret = rte_eth_tx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &txq_conf);
         if (ret < 0) {
             sprintf(err_msg, "Tx queue setup failed: err=%d, port=%u\n", ret, port_id);
@@ -96,7 +97,6 @@ int init_port(int port_id, struct rte_mempool *mbuf_pool) {
     }
 
     dzlog_debug("initializing port: %d done\n", port_id);
-    return ret;
 }
 
 void assert_link_status(uint16_t port_id) {

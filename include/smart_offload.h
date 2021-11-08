@@ -9,8 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,15 +34,17 @@
 #define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
 
 /**
+ * The quantity of different queues.
+ */
+#define GENERAL_QUEUES_QUANTITY 8
+#define HAIRPIN_QUEUES_QUANTITY 1
+
+/**
  * Shutdown flag
  */
 volatile bool force_quit;
 
-/**
- * The quantity of different queues.
- */
-static uint16_t general_queues_quantity = 8;
-static uint16_t hairpin_queues_quantity = 1;
+
 
 /**
  * Shutdown event has been triggered.
@@ -61,10 +65,15 @@ void smto_exit(int exit_code, const char *format);
  *   The ID of port which will be configured.
  * @param mbuf_pool
  *   The mempool used to initialize queues.
- * @return
- *   - 0 : Success.
  */
-int init_port(int port_id, struct rte_mempool *mbuf_pool);
+void init_port(int port_id, struct rte_mempool *mbuf_pool);
+
+
+/**
+ * Setup the hairpin configure on peer ports:
+ *   P0 <-> P1, P2 <-> P3, etc
+ */
+void setup_hairpin();
 
 /**
  * Check the status of the network port.
