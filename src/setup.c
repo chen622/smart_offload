@@ -49,11 +49,11 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     /* get basic info of network card */
     ret = rte_eth_dev_info_get(port_id, &dev_info);
     if (ret) {
-        sprintf(err_msg, "Error during getting device (port %u) info: \n", port_id);
+        sprintf(err_msg, "Error during getting device (port %u) info: ", port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
 
-    dzlog_debug("initializing port: %d\n", port_id);
+    dzlog_debug("initializing port: %d", port_id);
 
     /* check offload abilities of network card */
     port_conf.txmode.offloads &= dev_info.tx_offload_capa;
@@ -63,7 +63,7 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
                                 GENERAL_QUEUES_QUANTITY + HAIRPIN_QUEUES_QUANTITY,
                                 GENERAL_QUEUES_QUANTITY + HAIRPIN_QUEUES_QUANTITY, &port_conf);
     if (ret < 0) {
-        sprintf(err_msg, "cannot configure device: err=%d, port=%u\n", ret, port_id);
+        sprintf(err_msg, "cannot configure device: err=%d, port=%u", ret, port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
 
@@ -73,7 +73,7 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
         ret = rte_eth_rx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &rxq_conf, mbuf_pool);
         if (ret < 0) {
-            sprintf(err_msg, "Rx queue setup failed: err=%d, port=%u\n", ret, port_id);
+            sprintf(err_msg, "Rx queue setup failed: err=%d, port=%u", ret, port_id);
             smto_exit(EXIT_FAILURE, err_msg);
         }
     }
@@ -84,19 +84,19 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
         ret = rte_eth_tx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &txq_conf);
         if (ret < 0) {
-            sprintf(err_msg, "Tx queue setup failed: err=%d, port=%u\n", ret, port_id);
+            sprintf(err_msg, "Tx queue setup failed: err=%d, port=%u", ret, port_id);
             smto_exit(EXIT_FAILURE, err_msg);
         }
     }
 
     ret = rte_eth_promiscuous_enable(port_id);
     if (ret) {
-        sprintf(err_msg, "promiscuous mode enable failed: err=%s, port=%u\n",
+        sprintf(err_msg, "promiscuous mode enable failed: err=%s, port=%u",
                 rte_strerror(-ret), port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
 
-    dzlog_debug("initializing port: %d done\n", port_id);
+    dzlog_debug("initializing port: %d done", port_id);
 }
 
 void assert_link_status(uint16_t port_id) {
@@ -114,11 +114,11 @@ void assert_link_status(uint16_t port_id) {
 
     if (link_get_err < 0) {
         char * err_msg;
-        sprintf(err_msg, "get link status is failing: %s\n", rte_strerror(-link_get_err));
+        sprintf(err_msg, "get link status is failing: %s", rte_strerror(-link_get_err));
         smto_exit(EXIT_FAILURE, err_msg);
     }
     if (link.link_status == ETH_LINK_DOWN){
-        smto_exit(EXIT_FAILURE, "link is still down\n");
+        smto_exit(EXIT_FAILURE, "link is still down");
     }
 }
 

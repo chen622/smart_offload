@@ -33,7 +33,7 @@ char *zlog_conf = "conf/zlog.conf";
 
 static void signal_handler(int signum) {
     if (signum == SIGINT || signum == SIGTERM) {
-        dzlog_debug("\n\nSignal %d received, preparing to exit...\n",
+        dzlog_info("Signal %d received, preparing to exit...",
                     signum);
         force_quit = true;
     }
@@ -45,6 +45,8 @@ void smto_exit(int exit_code, const char *format) {
     } else {
         dzlog_error("%s", format);
     }
+
+    destroy_hairpin();
 
     uint16_t port_id;
     RTE_ETH_FOREACH_DEV(port_id) {
@@ -73,13 +75,13 @@ int main(int argc, char **argv) {
     /* setup the environment of DPDK */
     ret = rte_eal_init(argc, argv);
     if (ret < 0) {
-        smto_exit(EXIT_FAILURE, "invalid EAL arguments\n");
+        smto_exit(EXIT_FAILURE, "invalid EAL arguments");
     }
 
     /* setup zlog */
     ret = dzlog_init("conf/zlog.conf", "main");
     if (ret) {
-        smto_exit(EXIT_FAILURE, "zlog init failed\n");
+        smto_exit(EXIT_FAILURE, "zlog init failed");
     }
 
     /* listen to the shutdown event */
@@ -90,9 +92,9 @@ int main(int argc, char **argv) {
     /* check the quantity of network ports */
     port_quantity = rte_eth_dev_count_avail();
     if (port_quantity < 2) {
-        smto_exit(EXIT_FAILURE, "no enough Ethernet ports found\n");
+        smto_exit(EXIT_FAILURE, "no enough Ethernet ports found");
     } else if (port_quantity > 2) {
-        dzlog_warn("%d ports detected, but we only use two\n", port_quantity);
+        dzlog_warn("%d ports detected, but we only use two", port_quantity);
     }
 
     /* initialize the memory pool of dpdk */
@@ -100,7 +102,7 @@ int main(int argc, char **argv) {
                                                             RTE_MBUF_DEFAULT_BUF_SIZE,
                                                             rte_socket_id());
     if (mbuf_pool == NULL) {
-        smto_exit(EXIT_FAILURE, "cannot init mbuf pool\n");
+        smto_exit(EXIT_FAILURE, "cannot init mbuf pool");
     }
 
     uint16_t port_id;
@@ -116,5 +118,7 @@ int main(int argc, char **argv) {
         rte_eal_remote_launch(packet_processing, NULL, lcore_id);
     }
 
-    smto_exit(EXIT_SUCCESS, ":: SUCCESS! all core stop running!\n");
+    rte_eal_mp_wait_lcore();
+
+    smto_exit(EXIT_SUCCESS, "SUCCESS! all core stop running!");
 }

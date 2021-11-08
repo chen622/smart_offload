@@ -146,7 +146,7 @@ void setup_hairpin() {
         ret = setup_hairpin_queues(port_id, prev_port_id, port_num);
         if (ret) {
             sprintf(err_msg, "failed to setup hairpin queues"
-                             " on port: %u\n", port_id);
+                             " on port: %u", port_id);
             smto_exit(EXIT_FAILURE, err_msg);
         }
         port_num++;
@@ -157,7 +157,7 @@ void setup_hairpin() {
     RTE_ETH_FOREACH_DEV(port_id) {
         ret = rte_eth_dev_start(port_id);
         if (ret < 0) {
-            sprintf(err_msg, "failed to start network device: err=%d, port=%u\n",
+            sprintf(err_msg, "failed to start network device: err=%d, port=%u",
                     ret, port_id);
             smto_exit(EXIT_FAILURE, err_msg);
         }
@@ -180,4 +180,46 @@ void setup_hairpin() {
             smto_exit(EXIT_FAILURE, err_msg);
         }
     }
+}
+
+/**
+ * Unbind peer hairpin ports.
+ *
+ * @param port_id The port need to be unbind.
+ * @return
+ *   - <0 : do not have peer port
+ *   - 0 : Success
+ */
+static int hairpin_port_unbind(uint16_t port_id) {
+    uint16_t pair_port_list[RTE_MAX_ETHPORTS];
+    int pair_port_num, i;
+
+    /* unbind current port's hairpin TX queues. */
+    rte_eth_hairpin_unbind(port_id, RTE_MAX_ETHPORTS);
+    /* find all peer TX queues bind to current ports' RX queues. */
+    pair_port_num = rte_eth_hairpin_get_peer_ports(port_id,
+                                                   pair_port_list, RTE_MAX_ETHPORTS, 0);
+    if (pair_port_num < 0)
+        return pair_port_num;
+
+    for (i = 0; i < pair_port_num; i++) {
+        if (!rte_eth_devices[i].data->dev_started)
+            continue;
+        rte_eth_hairpin_unbind(pair_port_list[i], port_id);
+    }
+    return 0;
+}
+
+int destroy_hairpin() {
+    uint16_t port_id;
+    int ret, error = 0;
+
+    RTE_ETH_FOREACH_DEV(port_id) {
+        ret = hairpin_port_unbind(port_id);
+        if (ret) {
+            dzlog_error("error on unbind hairpin port: %u", port_id);
+            error = ret;
+        }
+    }
+    return error;
 }

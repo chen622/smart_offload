@@ -45,7 +45,6 @@
 volatile bool force_quit;
 
 
-
 /**
  * Shutdown event has been triggered.
  *
@@ -74,6 +73,13 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool);
  *   P0 <-> P1, P2 <-> P3, etc
  */
 void setup_hairpin();
+
+
+/**
+ * Unbind the hairpin ports
+ * @return
+ */
+int destroy_hairpin();
 
 /**
  * Check the status of the network port.
