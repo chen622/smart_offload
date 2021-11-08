@@ -9,8 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -44,16 +46,20 @@ void smto_exit(int exit_code, const char *format) {
         dzlog_error("%s", format);
     }
 
-    zlog_fini();
-
     uint16_t port_id;
     RTE_ETH_FOREACH_DEV(port_id) {
+        struct rte_flow_error *error;
+        rte_flow_flush(port_id, error);
+        if (error != NULL) {
+            dzlog_error("can not flush rte flow on port#%u", port_id);
+        }
         rte_eth_dev_stop(port_id);
         rte_eth_dev_close(port_id);
     }
+
     /* clean up the EAL */
     rte_eal_cleanup();
-
+    zlog_fini();
     rte_exit(exit_code, "%s", format);
 }
 
@@ -98,40 +104,16 @@ int main(int argc, char **argv) {
     }
 
     uint16_t port_id;
-    uint16_t prev_port_id = RTE_MAX_ETHPORTS;
-    uint16_t port_num = 0;
+    /* initialize the network port and do some configure */
     RTE_ETH_FOREACH_DEV(port_id) {
-        /* initialize the network port and do some configure */
         init_port(port_id, mbuf_pool);
-
-//        /* setup hairpin queues */
-//        ret = setup_hairpin_queues(port_id, prev_port_id,
-//                                   port_num);
-//        if (ret) {
-//            sprintf(err_msg, "fail to setup hairpin queues"
-//                             " on port: %u\n", port_id);
-//            smto_exit(EXIT_FAILURE, err_msg);
-//        }
-//        port_num++;
-//        prev_port_id = port_id;
-
-        /* start the port */
-        ret = rte_eth_dev_start(port_id);
-        if (ret < 0) {
-            sprintf(err_msg, "fail to start network device: err=%d, port=%u\n",
-                    ret, port_id);
-            smto_exit(EXIT_FAILURE, err_msg);
-        }
-
-        /* check the port status */
-        assert_link_status(port_id);
     }
+
+    setup_hairpin();
 
     uint16_t lcore_id;
     RTE_LCORE_FOREACH_WORKER(lcore_id) {
-        /* Simpler equivalent. 8< */
         rte_eal_remote_launch(packet_processing, NULL, lcore_id);
-        /* >8 End of simpler equivalent. */
     }
 
     smto_exit(EXIT_SUCCESS, ":: SUCCESS! all core stop running!\n");
