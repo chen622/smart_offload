@@ -22,7 +22,6 @@
  * SOFTWARE.
 */
 
-#include <rte_power.h>
 #include "smart_offload.h"
 
 #ifdef RELEASE
@@ -79,7 +78,7 @@ int main(int argc, char **argv) {
     uint16_t port_quantity;
     /* Quantity of slave works */
     uint16_t worker_quantity;
-    int port_id = 0;
+    uint16_t port_id = 0;
 
     /* Setup environment of DPDK */
     ret = rte_eal_init(argc, argv);
@@ -98,6 +97,8 @@ int main(int argc, char **argv) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
+    dzlog_debug("Running on socket #%d", rte_socket_id());
+
     /* Check the quantity of network ports */
     port_quantity = rte_eth_dev_count_avail();
     if (port_quantity < 1) {
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
         dzlog_warn("%d ports detected, but we only use two", port_quantity);
     }
 
-    /* Check the quantity of workers*/
+    /* Check the quantity of workers */
     worker_quantity = rte_lcore_count();
     if (worker_quantity != GENERAL_QUEUES_QUANTITY + 1) {
         snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH,
@@ -124,19 +125,26 @@ int main(int argc, char **argv) {
     }
 
     if (port_quantity == 1) {
-        dzlog_debug("ONE port hairpin mod");
-        port_id = rte_eth_find_next(0);
+        dzlog_debug("ONE port hairpin mode");
+        port_id = rte_eth_find_next_owned_by(0, RTE_ETH_DEV_NO_OWNER);
         init_port(port_id, mbuf_pool);
         setup_one_port_hairpin(port_id);
+        zlog_category_t *zc = zlog_get_category("rule");
+        struct rte_flow_error error = {0};
+        struct rte_flow *offload_rule = create_offload_rte_flow(port_id, zc, &error);
+        if (offload_rule == NULL) {
+            dzlog_warn("can not create offload rule: %s", error.message);
+        }
+
     } else {
-        dzlog_debug("TWO port hairpin mod");
+        dzlog_debug("TWO port hairpin mode");
         /* Initialize the network port and do some configure */
         RTE_ETH_FOREACH_DEV(port_id) {
             init_port(port_id, mbuf_pool);
         }
-
         setup_two_port_hairpin();
     }
+
 
     uint16_t lcore_id = 0;
     uint16_t index = 0;

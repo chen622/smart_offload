@@ -30,6 +30,9 @@
 #include <zlog.h>
 #include <rte_ethdev.h>
 #include <rte_hash.h>
+#include <rte_power.h>
+#include "flow_management.h"
+
 
 /**
  * Used to check the link status

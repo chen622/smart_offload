@@ -81,13 +81,18 @@ static inline int packet_processing(struct rte_mbuf *m, uint16_t queue_index) {
     union ipv4_5tuple_host key = {.xmm=0};
     mask0 = (rte_xmm_t) {.u32 = {BIT_8_TO_15, ALL_32_BITS,
                                  ALL_32_BITS, ALL_32_BITS}};
-    if (m->packet_type & RTE_PTYPE_L3_IPV4 && m->packet_type & RTE_PTYPE_L4_TCP) {
+    if (m->packet_type & RTE_PTYPE_L3_IPV4 && (m->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
         get_ipv4_5tuple(m, mask0.x, &key);
         char pkt_info[250];
         dump_pkt_info(&key, queue_index, pkt_info);
         struct flow_meta *data = 0;
         ret = rte_hash_lookup_data(flow_hash_table, &key, (void **) &data);
-        zlog_debug(zc, "packet(%u)(%d): %s", m->pkt_len, ret, pkt_info);
+        if (m->packet_type & RTE_PTYPE_L4_UDP) {
+            zlog_debug(zc, "packet(%u)(udp)(%d): %s", m->pkt_len, ret, pkt_info);
+        }
+        if (m->packet_type & RTE_PTYPE_L4_TCP) {
+            zlog_debug(zc, "packet(%u)(tcp)(%d): %s", m->pkt_len, ret, pkt_info);
+        }
         if (ret == -ENOENT) { // A flow that has not yet appeared
             data = create_flow_meta(m->pkt_len);
             ret = rte_hash_add_key_data(flow_hash_table, &key, data);
