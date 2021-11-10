@@ -152,5 +152,5 @@ int main(int argc, char **argv) {
 
     rte_eal_mp_wait_lcore();
 
-    smto_exit(EXIT_SUCCESS, "SUCCESS! all core stop running!");
+    smto_exit(EXIT_SUCCESS, "SUCCESS! All core stop running!");
 }
