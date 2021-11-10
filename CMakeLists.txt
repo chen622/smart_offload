@@ -22,11 +22,11 @@ endif ()
 # avoid Apple Silicon impact
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
-#set(ENV{PKG_CONFIG_PATH} "/opt/mellanox/dpdk/lib64/pkgconfig")
+message(STATUS $ENV{PKG_CONFIG_PATH})
 
 # import dpdk library
 find_package(PkgConfig REQUIRED)
-pkg_search_module(LIBDPDK REQUIRED libdpdk)
+pkg_check_modules(LIBDPDK REQUIRED libdpdk)
 
 # import thread
 find_package(Threads REQUIRED)

@@ -44,6 +44,10 @@ static int setup_hairpin_queues(uint16_t port_id, uint16_t prev_port_id, bool sa
             .manual_bind = 1,
             .tx_explicit = 1,
     };
+    if (same_port) {
+        hairpin_conf.manual_bind = 0;
+        hairpin_conf.tx_explicit = 0;
+    }
     struct rte_eth_dev_info dev_info = {0};
     struct rte_eth_dev_info peer_dev_info = {0};
     struct rte_eth_rxq_info rxq_info = {0};
@@ -217,14 +221,12 @@ void setup_one_port_hairpin(int port_id) {
     char err_msg[MAX_ERROR_MESSAGE_LENGTH];
 
     /* setup hairpin queues */
-    uint16_t port_num = 0;
-    ret = setup_hairpin_queues(port_id, port_id, true, port_num);
+    ret = setup_hairpin_queues(port_id, port_id, true, 0);
     if (ret) {
         snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "failed to setup hairpin queues"
                                                     " on port: %u", port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
-    port_num++;
 
     /* start the ports */
     ret = rte_eth_dev_start(port_id);
