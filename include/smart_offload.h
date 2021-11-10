@@ -29,15 +29,32 @@
 #include <signal.h>
 #include <zlog.h>
 #include <rte_ethdev.h>
+#include <rte_hash.h>
 
+/**
+ * Used to check the link status
+ */
 #define CHECK_INTERVAL 1000  /* 100ms */
 #define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
+
+/**
+ * default to 4k hash entries (approx)
+ */
+#define MAX_HASH_ENTRIES (1024*4)
+
+#define MAX_ERROR_MESSAGE_LENGTH 512
 
 /**
  * The quantity of different queues.
  */
 #define GENERAL_QUEUES_QUANTITY 8
 #define HAIRPIN_QUEUES_QUANTITY 1
+
+/**
+ * Used to mask useless bits when extract packet info.
+ */
+#define ALL_32_BITS 0xffffffff
+#define BIT_8_TO_15 0x0000ff00
 
 /**
  * Shutdown flag
@@ -90,9 +107,9 @@ int destroy_hairpin();
 void assert_link_status(uint16_t port_id);
 
 /**
- * Run on the worker core to process packets from rx queues.
+ * Run on the worker core to pull packets from rx queues.
  *
  */
-int packet_processing(void *args);
+int process_loop(void *args);
 
 #endif //SMART_OFFLOAD_SMART_OFFLOAD_H
