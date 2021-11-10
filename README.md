@@ -18,3 +18,12 @@
 - [ ]  对空pattern的rte_flow使用rss
 - [ ]  一组hairpin是否可以实现双向通信
 - [ ]  如何实现定时查询 age？回调？alerm触发？
+
+
+## 四、快速上手
+```bash
+mkdir build && cd build
+cmake ..
+make
+./smart_offload -l 0-8
+```
