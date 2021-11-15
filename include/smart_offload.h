@@ -89,8 +89,9 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool);
  * Setup the hairpin configure on peer ports:
  *   P0 <-> P1, P2 <-> P3, etc
  */
-void setup_hairpin();
+void setup_two_port_hairpin();
 
+void setup_one_port_hairpin(int port_id);
 
 /**
  * Unbind the hairpin ports
