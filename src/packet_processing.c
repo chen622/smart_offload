@@ -145,6 +145,7 @@ int process_loop(void *args) {
     uint16_t nb_rx;
     uint16_t nb_tx;
     uint16_t packet_index;
+    int ret;
 
     while (!force_quit) {
         nb_rx = rte_eth_rx_burst(port_id, queue_id, mbufs, 32);

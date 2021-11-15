@@ -31,7 +31,9 @@
 #endif
 
 #ifdef EM_HASH_CRC
+
 #include <rte_hash_crc.h>
+
 #define DEFAULT_HASH_FUNC       rte_hash_crc
 #else
 #include <rte_jhash.h>
@@ -79,7 +81,7 @@ union ipv4_5tuple_host {
  * @return The real hash key.
  */
 static inline uint32_t ipv4_hash_crc(const void *data, __rte_unused uint32_t data_len,
-              uint32_t init_val) {
+                                     uint32_t init_val) {
     const union ipv4_5tuple_host *k;
     uint32_t t;
     const uint32_t *p;
@@ -105,13 +107,11 @@ static inline uint32_t ipv4_hash_crc(const void *data, __rte_unused uint32_t dat
 
 static void convert_ipv4_5tuple(struct ipv4_5tuple *key1,
                                 union ipv4_5tuple_host *key2) {
-    key2->ip_dst = rte_cpu_to_be_32(key1->ip_dst);
-    key2->ip_src = rte_cpu_to_be_32(key1->ip_src);
-    key2->port_dst = rte_cpu_to_be_16(key1->port_dst);
-    key2->port_src = rte_cpu_to_be_16(key1->port_src);
-    key2->proto = key1->proto;
-    key2->pad0 = 0;
-    key2->pad1 = 0;
+    key1->ip_dst = rte_be_to_cpu_32(key2->ip_dst);
+    key1->ip_src = rte_be_to_cpu_32(key2->ip_src);
+    key1->port_dst = rte_be_to_cpu_16(key2->port_dst);
+    key1->port_src = rte_be_to_cpu_16(key2->port_src);
+    key1->proto = key2->proto;
 }
 
 #endif //SMART_OFFLOAD_HASH_KEY_H

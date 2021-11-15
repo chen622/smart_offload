@@ -79,6 +79,7 @@ int main(int argc, char **argv) {
     uint16_t port_quantity;
     /* Quantity of slave works */
     uint16_t worker_quantity;
+    int port_id = 0;
 
     /* Setup environment of DPDK */
     ret = rte_eal_init(argc, argv);
@@ -99,7 +100,7 @@ int main(int argc, char **argv) {
 
     /* Check the quantity of network ports */
     port_quantity = rte_eth_dev_count_avail();
-    if (port_quantity < 2) {
+    if (port_quantity < 1) {
         smto_exit(EXIT_FAILURE, "no enough Ethernet ports found");
     } else if (port_quantity > 2) {
         dzlog_warn("%d ports detected, but we only use two", port_quantity);
@@ -122,13 +123,20 @@ int main(int argc, char **argv) {
         smto_exit(EXIT_FAILURE, "cannot init mbuf pool");
     }
 
-    uint16_t port_id;
-    /* Initialize the network port and do some configure */
-    RTE_ETH_FOREACH_DEV(port_id) {
+    if (port_quantity == 1) {
+        dzlog_debug("ONE port hairpin mod");
+        port_id = rte_eth_find_next(0);
         init_port(port_id, mbuf_pool);
-    }
+        setup_one_port_hairpin(port_id);
+    } else {
+        dzlog_debug("TWO port hairpin mod");
+        /* Initialize the network port and do some configure */
+        RTE_ETH_FOREACH_DEV(port_id) {
+            init_port(port_id, mbuf_pool);
+        }
 
-    setup_hairpin();
+        setup_two_port_hairpin();
+    }
 
     uint16_t lcore_id = 0;
     uint16_t index = 0;
