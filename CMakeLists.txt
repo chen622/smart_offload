@@ -3,6 +3,7 @@ project(smart_offload)
 
 set(CMAKE_C_STANDARD 11)
 
+
 # configure build type
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -21,9 +22,11 @@ endif ()
 # avoid Apple Silicon impact
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
+#set(ENV{PKG_CONFIG_PATH} "/opt/mellanox/dpdk/lib64/pkgconfig")
+
 # import dpdk library
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBDPDK REQUIRED libdpdk)
+pkg_search_module(LIBDPDK REQUIRED libdpdk)
 
 # import thread
 find_package(Threads REQUIRED)
@@ -40,7 +43,9 @@ set_target_properties(
 )
 configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
+link_directories(${LIBDPDK_LIBRARY_DIRS})
+
+include_directories(${CMAKE_SOURCE_DIR}/include ${LIBDPDK_INCLUDE_DIRS})
 
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
