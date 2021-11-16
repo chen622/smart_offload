@@ -121,9 +121,9 @@ static inline int packet_processing(struct rte_mbuf *m, uint16_t queue_index, ui
         } else if (ret >= 0) { // A flow that has appeared before
             flow_map_data->packet_amount++;
             flow_map_data->flow_size += m->pkt_len;
-            zlog_debug(zc,
-                       "capture a packet which belong to a flow in flow table, which already have %u packets and total size is %u",
-                       flow_map_data->packet_amount, flow_map_data->flow_size);
+//            zlog_debug(zc,
+//                       "capture a packet which belong to a flow in flow table, which already have %u packets and total size is %u",
+//                       flow_map_data->packet_amount, flow_map_data->flow_size);
 
             /* Assume the flow can be offloaded now */
             if (flow_map_data->packet_amount == 5) {
