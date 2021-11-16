@@ -146,7 +146,14 @@ int main(int argc, char **argv) {
         }
         setup_two_port_hairpin();
     }
-
+    struct rte_flow *flow = 0;
+    struct rte_flow_error flow_error = {0};
+    flow = create_default_rss_flow(port_id, GENERAL_QUEUES_QUANTITY, &flow_error);
+    if (flow == NULL) {
+        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH,
+                 "the default rss flow create failed: %s", flow_error.message);
+        smto_exit(EXIT_FAILURE, err_msg);
+    }
 
     uint16_t lcore_id = 0;
     uint16_t index = 0;

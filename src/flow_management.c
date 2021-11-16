@@ -31,6 +31,61 @@ enum layer_name {
     END
 };
 
+struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount, struct rte_flow_error *error) {
+    /* The rte flow will be created. */
+    struct rte_flow *flow = 0;
+    /* The basic attribute of rte flow */
+    struct rte_flow_attr attr = { /* Holds the flow attributes. */
+            .group = 0, /* set the rule on the main group. */
+            .ingress = 1,/* Rx flow. */
+            .priority = 1,};
+    /* Define the pattern to match the packet */
+    struct rte_flow_item pattern[] = {
+            [L2] = {
+                    .type = RTE_FLOW_ITEM_TYPE_ETH,
+            },
+            [L3] = {
+                    .type = RTE_FLOW_ITEM_TYPE_IPV4,
+            },
+            [L4] = {
+                    .type = RTE_FLOW_ITEM_TYPE_VOID,
+            },
+            [END] = {
+                    .type = RTE_FLOW_ITEM_TYPE_END
+            }
+
+    };
+
+    uint8_t symmetric_rss_key[] = {
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+            0x6D, 0x5A, 0x6D, 0x5A,
+    };
+    struct rte_flow_action_rss rss = {
+            .level = 0, /* RSS should be done on inner header. */
+            .queue = queue_schedule, /* Set the selected target queues. */
+            .queue_num = queue_amount, /* The number of queues. */
+            .types =  ETH_RSS_IP,
+            .key = symmetric_rss_key,
+            .key_len = 40};
+    struct rte_flow_action actions[] = {
+            [0] = {
+                    .type = RTE_FLOW_ACTION_TYPE_RSS,
+                    .conf = &rss},
+            [1] = {
+                    .type = RTE_FLOW_ACTION_TYPE_END,
+                    .conf = NULL}
+    };
+    flow = rte_flow_create(port_id, &attr, pattern, actions, error);
+    return flow;
+}
 
 struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_host *flow_key, zlog_category_t *zc,
                                          struct rte_flow_error *error) {

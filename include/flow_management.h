@@ -30,7 +30,34 @@
 #include <zlog.h>
 #include "hash_key.h"
 
+/**
+ * Used to init a schedule plan to select queue by rss.
+ */
+static uint16_t queue_schedule[] = {3, 1, 2, 4, 5, 7, 0, 6};
 
+/**
+ * Create a default rss rule which can match all packet.
+ *
+ * @param port_id The port which the flow will be affect.
+ * @param queue_amount The amount of queues which can be used to rss.
+ * @param error The error return by creating rte_flow.
+ * @return
+ *      - not NULL: Create success.
+ *      - NULL: Some error occur when create a rte_flow.
+ */
+struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount, struct rte_flow_error *error);
+
+ /**
+  * Create a offload flow which match by a ipv4 5-tuple.
+  *
+  * @param port_id The port which the flow will be affect.
+  * @param flow_key The ipv4 5-tuple which used to match packet.
+  * @param zc The descriptor used to write logs.
+  * @param error The error return by creating rte_flow.
+  * @return
+ *      - not NULL: Create success.
+ *      - NULL: Some error occur when create a rte_flow.
+  */
 struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_host *flow_key, zlog_category_t *zc,
                                          struct rte_flow_error *error);
 
