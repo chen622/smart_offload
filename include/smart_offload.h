@@ -60,10 +60,17 @@
 #define BIT_8_TO_15 0x0000ff00
 
 /**
- * Shutdown flag
+ * Shutdown flag.
  */
 volatile bool force_quit;
 
+/**
+ * Used to pass parameters to the worker.
+ */
+struct worker_parameter {
+    uint16_t queue_id;
+    uint16_t port_id;
+};
 
 /**
  * Shutdown event has been triggered.
