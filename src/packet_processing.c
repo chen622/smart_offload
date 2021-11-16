@@ -60,6 +60,13 @@ static inline void dump_pkt_info(union ipv4_5tuple_host *key, uint16_t qi, char 
              (unsigned int) qi);
 }
 
+/**
+ * Extract ipv4 5 tuple from the mbuf by SSE3 instruction.
+ *
+ * @param m0 The mbuf memory.
+ * @param mask0 The position which doesn't need.
+ * @param key The result.
+ */
 static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mask0, union ipv4_5tuple_host *key) {
     __m128i tmpdata0 = _mm_loadu_si128(
             rte_pktmbuf_mtod_offset(m0, __m128i *,
@@ -75,46 +82,67 @@ static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mas
  * @param m The packet raw data.
  * @param queue_index The index of queue which the packet comes from.
  * @param key The key used to hash.
+ * @return Success or not:
+ *     - 0: success.
+ *     - 1: unsupported return value of hash map lookup.
+ *     - -1: can not add key into hash map.
+ *     - -2: create offload rte_flow failed.
  */
-static inline int packet_processing(struct rte_mbuf *m, uint16_t queue_index) {
+static inline int packet_processing(struct rte_mbuf *m, uint16_t queue_index, uint16_t port_id) {
     int ret = 0;
-    union ipv4_5tuple_host key = {.xmm=0};
+    union ipv4_5tuple_host flow_map_key = {.xmm=0};
+    /* Used to extract useful variables from memory */
     mask0 = (rte_xmm_t) {.u32 = {BIT_8_TO_15, ALL_32_BITS,
                                  ALL_32_BITS, ALL_32_BITS}};
+
     if (m->packet_type & RTE_PTYPE_L3_IPV4 && (m->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
-        get_ipv4_5tuple(m, mask0.x, &key);
+
+        get_ipv4_5tuple(m, mask0.x, &flow_map_key);
+
         char pkt_info[250];
-        dump_pkt_info(&key, queue_index, pkt_info);
-        struct flow_meta *data = 0;
-        ret = rte_hash_lookup_data(flow_hash_table, &key, (void **) &data);
-        if (m->packet_type & RTE_PTYPE_L4_UDP) {
-            zlog_debug(zc, "packet(%u)(udp)(%d): %s", m->pkt_len, ret, pkt_info);
-        }
-        if (m->packet_type & RTE_PTYPE_L4_TCP) {
-            zlog_debug(zc, "packet(%u)(tcp)(%d): %s", m->pkt_len, ret, pkt_info);
-        }
+        dump_pkt_info(&flow_map_key, queue_index, pkt_info);
+
+        struct flow_meta *flow_map_data = 0;
+        ret = rte_hash_lookup_data(flow_hash_table, &flow_map_key, (void **) &flow_map_data);
+
+        zlog_debug(zc, "packet(%u)(%s)(%d): %s", m->pkt_len, m->packet_type & RTE_PTYPE_L4_UDP ? "UDP" : "TCP", ret,
+                   pkt_info);
+
         if (ret == -ENOENT) { // A flow that has not yet appeared
-            data = create_flow_meta(m->pkt_len);
-            ret = rte_hash_add_key_data(flow_hash_table, &key, data);
+            flow_map_data = create_flow_meta(m->pkt_len);
+            ret = rte_hash_add_key_data(flow_hash_table, &flow_map_key, flow_map_data);
             if (ret != 0) {
                 zlog_error(zc, "can not add pkt:%s into flow table, return error %d", pkt_info, ret);
-                return 1;
+                return -1;
             } else {
                 zlog_debug(zc, "success add a flow to flow hash table");
                 return 0;
             }
         } else if (ret >= 0) { // A flow that has appeared before
-            data->packet_amount++;
-            zlog_debug(zc, "capture a packet which belong to a flow in flow table, which already have %d packets",
-                       data->packet_amount);
+            flow_map_data->packet_amount++;
+            flow_map_data->flow_size += m->pkt_len;
+            zlog_debug(zc,
+                       "capture a packet which belong to a flow in flow table, which already have %u packets and total size is %u",
+                       flow_map_data->packet_amount, flow_map_data->flow_size);
+
+            /* Assume the flow can be offloaded now */
+            if (flow_map_data->packet_amount == 5) {
+                struct rte_flow_error flow_error = {0};
+                struct rte_flow *flow = create_offload_rte_flow(port_id, &flow_map_key, zc, &flow_error);
+                if (flow == NULL) {
+                    zlog_error(zc, "can not create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
+                    return -2;
+                }
+                zlog_info(zc, "a flow(%s) has been offload to network card", pkt_info);
+                flow_map_data->is_offload = true;
+                flow_map_data->flow = flow;
+            }
             return 0;
         } else {
             zlog_error(zc, "unhandled error occur");
-            return -1;
+            return 1;
         }
-
     }
-    return 0;
 }
 
 
@@ -122,12 +150,13 @@ int process_loop(void *args) {
     unsigned lcore_id;
     zc = zlog_get_category("worker");
     lcore_id = rte_lcore_id();
-    uint16_t queue_id = *(uint16_t *) args;
+    uint16_t queue_id = ((struct worker_parameter *) args)->queue_id;
+    uint16_t port_id = ((struct worker_parameter *) args)->port_id;
     zlog_info(zc, "worker #%u for queue #%u start working!", lcore_id, queue_id);
 
+    /* Create flow hash map */
     char table_name[RTE_HASH_NAMESIZE];
     snprintf(table_name, sizeof(table_name), "flow_hash_table_%u", lcore_id);
-    /* create hash map */
     struct rte_hash_parameters flow_hash_table_parameter = {
             .name = table_name,
             .entries = MAX_HASH_ENTRIES,
@@ -142,22 +171,19 @@ int process_loop(void *args) {
         smto_exit(EXIT_FAILURE, err_msg);
     }
 
-
-    /* pre-allocate the local variable */
+    /* Pre-allocate the local variable */
     struct rte_mbuf *mbufs[32] = {0};
-    struct rte_flow_error error;
-    uint16_t port_id = 0;
     uint16_t nb_rx;
     uint16_t nb_tx;
     uint16_t packet_index;
     int ret;
-
+    /* pull packet from queue and process */
     while (!force_quit) {
         nb_rx = rte_eth_rx_burst(port_id, queue_id, mbufs, 32);
         if (nb_rx) {
             for (packet_index = 0; packet_index < nb_rx; packet_index++) {
                 struct rte_mbuf *m = mbufs[packet_index];
-                packet_processing(m, queue_id);
+                packet_processing(m, queue_id, port_id);
             }
             nb_tx = rte_eth_tx_burst(port_id, queue_id,
                                      mbufs, nb_rx);
@@ -170,14 +196,19 @@ int process_loop(void *args) {
         }
     }
 
-    const void *key = 0;
-    void *data = 0;
-    uint32_t *next = 0;
-    uint32_t current = rte_hash_iterate(flow_hash_table, &key, &data, next);
-    for (; current != -ENOENT; current = rte_hash_iterate(flow_hash_table, &key, &data, next)) {
-        int32_t del_key = rte_hash_del_key(flow_hash_table, key);
-        rte_hash_free_key_with_position(flow_hash_table, del_key);
-        rte_free(data);
+
+
+    /* process exit and free the map */
+    if (rte_hash_count(flow_hash_table) > 0) {
+        const void *key = 0;
+        void *data = 0;
+        uint32_t *next = 0;
+        uint32_t current = rte_hash_iterate(flow_hash_table, &key, &data, next);
+        for (; current != -ENOENT; current = rte_hash_iterate(flow_hash_table, &key, &data, next)) {
+            int32_t del_key = rte_hash_del_key(flow_hash_table, key);
+            rte_hash_free_key_with_position(flow_hash_table, del_key);
+            rte_free(data);
+        }
     }
     // TODO: check the memory of key and value has free or not
     rte_hash_free(flow_hash_table);

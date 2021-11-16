@@ -28,8 +28,10 @@
 #include <rte_flow.h>
 #include <rte_ethdev.h>
 #include <zlog.h>
+#include "hash_key.h"
 
 
-struct rte_flow *create_offload_rte_flow(uint16_t port_id, zlog_category_t *zc, struct rte_flow_error *error);
+struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_host *flow_key, zlog_category_t *zc,
+                                         struct rte_flow_error *error);
 
 #endif //SMART_OFFLOAD_FLOW_MANAGEMENT_H

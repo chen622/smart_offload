@@ -50,10 +50,10 @@ void smto_exit(int exit_code, const char *format) {
 
     uint16_t port_id;
     RTE_ETH_FOREACH_DEV(port_id) {
-        struct rte_flow_error *error;
-        rte_flow_flush(port_id, error);
-        if (error != NULL) {
-            dzlog_error("can not flush rte flow on port#%u", port_id);
+        struct rte_flow_error error = {0};
+        int ret = rte_flow_flush(port_id, &error);
+        if (ret) {
+            dzlog_error("can not flush rte flow on port#%u: %s", port_id, error.message);
         }
         rte_eth_dev_stop(port_id);
         rte_eth_dev_close(port_id);
@@ -71,6 +71,7 @@ void smto_exit(int exit_code, const char *format) {
 }
 
 int main(int argc, char **argv) {
+
     /* General return value */
     int ret;
     char err_msg[MAX_ERROR_MESSAGE_LENGTH];
@@ -91,6 +92,13 @@ int main(int argc, char **argv) {
     if (ret) {
         smto_exit(EXIT_FAILURE, "zlog init failed");
     }
+
+        /* Check the instruction */
+#if defined(__SSE2__)
+    dzlog_debug("Find SSE2 support");
+#else
+#error No vector engine (SSE, NEON, ALTIVEC) available, check your toolchain
+#endif
 
     /* Listen to the shutdown event */
     force_quit = false;
@@ -124,18 +132,12 @@ int main(int argc, char **argv) {
         smto_exit(EXIT_FAILURE, "cannot init mbuf pool");
     }
 
+    /* Config port and setup hairpin mode */
     if (port_quantity == 1) {
         dzlog_debug("ONE port hairpin mode");
         port_id = rte_eth_find_next_owned_by(0, RTE_ETH_DEV_NO_OWNER);
         init_port(port_id, mbuf_pool);
         setup_one_port_hairpin(port_id);
-        zlog_category_t *zc = zlog_get_category("rule");
-        struct rte_flow_error error = {0};
-        struct rte_flow *offload_rule = create_offload_rte_flow(port_id, zc, &error);
-        if (offload_rule == NULL) {
-            dzlog_warn("can not create offload rule: %s", error.message);
-        }
-
     } else {
         dzlog_debug("TWO port hairpin mode");
         /* Initialize the network port and do some configure */
@@ -148,21 +150,16 @@ int main(int argc, char **argv) {
 
     uint16_t lcore_id = 0;
     uint16_t index = 0;
-    uint16_t queue_ids[GENERAL_QUEUES_QUANTITY];
+    struct worker_parameter worker_params[GENERAL_QUEUES_QUANTITY];
     RTE_LCORE_FOREACH_WORKER(lcore_id) {
-        queue_ids[index] = index;
+        worker_params[index].port_id = port_id;
+        worker_params[index].queue_id = index;
         rte_power_init(lcore_id);
-//        uint32_t freqs[30];
-//        uint32_t total = rte_power_freqs(lcore_id, freqs, 30);
-//        for (int i = 0; i < 30; ++i) {
-//            printf("\t%u", freqs[i]);
-//        }
-//        printf("\ntotal:%u", total);
         ret = rte_power_set_freq(lcore_id, 2);
         if (ret < 0) {
             dzlog_warn("worker #%u does not running at the fixed frequency", lcore_id);
         }
-        rte_eal_remote_launch(process_loop, &queue_ids[index], lcore_id);
+        rte_eal_remote_launch(process_loop, &worker_params[index], lcore_id);
         index++;
     }
 
