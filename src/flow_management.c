@@ -56,6 +56,7 @@ struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount
 
     };
 
+    /* A matrix can be used to do symmetric hash */
     uint8_t symmetric_rss_key[] = {
             0x6D, 0x5A, 0x6D, 0x5A,
             0x6D, 0x5A, 0x6D, 0x5A,
@@ -87,8 +88,10 @@ struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount
     return flow;
 }
 
-struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_host *flow_key, zlog_category_t *zc,
-                                         struct rte_flow_error *error) {
+struct rte_flow *
+create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, union ipv4_5tuple_host *flow_key,
+                        zlog_category_t *zc,
+                        struct rte_flow_error *error) {
     /* The rte flow will be created. */
     struct rte_flow *flow = 0;
     /* The basic attribute of rte flow */
@@ -158,7 +161,7 @@ struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_hos
     struct rte_eth_dev_info dev_info;
     int ret = rte_eth_dev_info_get(port_id, &dev_info);
     if (ret) {
-        zlog_warn(zc, "can not get dev info of peer port");
+        zlog_warn(zc, "cannot get dev info of peer port");
         return NULL;
     }
     uint16_t hairpin_queue_id;
@@ -177,19 +180,42 @@ struct rte_flow *create_offload_rte_flow(uint16_t port_id, union ipv4_5tuple_hos
     struct rte_flow_action_queue hairpin_queue = {
             .index = hairpin_queue_id,
     };
+    /* Define a counter to count the quantity of packet */
+    struct rte_flow_action_count dedicated_counter = {
+            .shared = 0,
+    };
+
+    /* Define an action to set a hook which will be executed when the flow time out */
+    struct rte_flow_action_age age_action = {
+            .context = flow_key,
+            .timeout = 10 /* after 10 seconds */
+    };
+
+    /* Define the action pipe to do */
     struct rte_flow_action actions[] = {
-            [0] = {
+            {
                     .type = RTE_FLOW_ACTION_TYPE_SET_IPV4_DST,
                     .conf = &ipv4_new_dst
             },
-            [1] = {
+            {
+                    .type = RTE_FLOW_ACTION_TYPE_COUNT,
+                    .conf = &dedicated_counter,
+            },
+            {
+                    .type = RTE_FLOW_ACTION_TYPE_AGE,
+                    .conf = &age_action
+            },
+            {
                     .type = RTE_FLOW_ACTION_TYPE_QUEUE,
                     .conf = &hairpin_queue
             },
-            [2] = {
+            {
                     .type = RTE_FLOW_ACTION_TYPE_END,
             }
     };
+
+//    if ()
+
     flow = rte_flow_create(port_id, &attr, pattern, actions, error);
     return flow;
 }

@@ -22,48 +22,37 @@
  * SOFTWARE.
 */
 
-#ifndef SMART_OFFLOAD_FLOW_META_H
-#define SMART_OFFLOAD_FLOW_META_H
+#ifndef SMART_OFFLOAD_FLOW_EVENT_H
+#define SMART_OFFLOAD_FLOW_EVENT_H
 
+#include <stdint.h>
 #include <rte_flow.h>
+#include <rte_ethdev.h>
 #include <rte_hash.h>
+#include <rte_alarm.h>
+#include <rte_malloc.h>
+#include <zlog.h>
 #include "hash_key.h"
+#include "smart_offload.h"
+#include "flow_meta.h"
 
 /**
- * The data structure to save statistical information of flow.
+ * Used to pass port id and flow map to the function which delete the timeout flow.
  */
-struct flow_meta {
-    /* Use the number of cycles of CPU as the time*/
-    uint64_t create_at;
-    /* Total size of flow */
-    uint32_t flow_size;
-    /* Total amount of packets in a flow */
-    uint32_t packet_amount;
-    /* Has created rte_flow to offload flow or not */
-    bool is_offload;
-    /* The rte_flow to handle this flow */
-    struct rte_flow *flow;
+struct delete_flow_params {
+    uint16_t port_id;
+    struct rte_hash *flow_hash_map;
 };
 
 /**
- * The constructor function of flow meta.
- * It will allocate memory for new object which need to be free at the end.
+ * Register a callback function to delete the flow which has timeout.
  *
- * @param pkt_len The length of first packet.
+ * @param port_id The port id of flow.
+ * @param flow_hash_map Used to pass flow map to the callback function.
  * @return
- *      - A pointer of new flow meta object.
+ *      - On success, zero.
+ *      - On failure, a negative value.
  */
-struct flow_meta *create_flow_meta(uint32_t pkt_len);
+int register_aged_event(uint16_t port_id, struct rte_hash *flow_hash_map);
 
-/**
- * Return a format string of ipv4 5-tuple.
- *
- * @param key The key want to print.
- * @param qi The id of queue.
- * @param result The result string.
- * @param result_size The max length of result string.
- */
-inline void dump_pkt_info(union ipv4_5tuple_host *key, uint16_t qi, char *result, int result_length);
-
-
-#endif //SMART_OFFLOAD_FLOW_META_H
+#endif //SMART_OFFLOAD_FLOW_EVENT_H

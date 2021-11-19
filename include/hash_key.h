@@ -83,25 +83,39 @@ union ipv4_5tuple_host {
 static inline uint32_t ipv4_hash_crc(const void *data, __rte_unused uint32_t data_len,
                                      uint32_t init_val) {
     const union ipv4_5tuple_host *k;
-    uint32_t t;
-    const uint32_t *p;
-
     k = data;
-    t = k->proto;
-    p = (const uint32_t *) &k->port_src;
-
+    uint32_t v1 = k->ip_src, v2 = k->ip_dst, v3 = (k->port_src << 16) | k->port_dst;
+    uint32_t v4 = k->proto;
+//    if (k->ip_src < k->ip_dst) {
+//        v1 = k->ip_src;
+//        v2 = k->ip_dst;
+//        v3 = (k->port_src << 16) | k->port_dst;
+//    } else if (k->ip_src > k->ip_dst) {
+//        v1 = k->ip_dst;
+//        v2 = k->ip_src;
+//        v3 = (k->port_dst << 16) | k->port_src;
+//    } else {
+//        if (k->port_src < k->port_dst) {
+//            v1 = k->ip_src;
+//            v2 = k->ip_dst;
+//            v3 = (k->port_src << 16) | k->port_dst;
+//        } else {
+//            v1 = k->ip_dst;
+//            v2 = k->ip_src;
+//            v3 = (k->port_dst << 16) | k->port_src;
+//        }
+//    }
 #ifdef EM_HASH_CRC
-    init_val = rte_hash_crc_4byte(t, init_val);
-    init_val = rte_hash_crc_4byte(k->ip_src, init_val);
-    init_val = rte_hash_crc_4byte(k->ip_dst, init_val);
-    init_val = rte_hash_crc_4byte(*p, init_val);
+    init_val = rte_hash_crc_4byte(v1, init_val);
+    init_val = rte_hash_crc_4byte(v2, init_val);
+    init_val = rte_hash_crc_4byte(v3, init_val);
+    init_val = rte_hash_crc_4byte(v4, init_val);
 #else
-    init_val = rte_jhash_1word(t, init_val);
-    init_val = rte_jhash_1word(k->ip_src, init_val);
-    init_val = rte_jhash_1word(k->ip_dst, init_val);
-    init_val = rte_jhash_1word(*p, init_val);
+    init_val = rte_jhash_1word(v1, init_val);
+    init_val = rte_jhash_1word(v2, init_val);
+    init_val = rte_jhash_1word(v3, init_val);
+    init_val = rte_jhash_1word(v4, init_val);
 #endif
-
     return init_val;
 }
 
