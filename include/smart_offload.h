@@ -31,7 +31,6 @@
 #include <rte_ethdev.h>
 #include <rte_hash.h>
 #include <rte_power.h>
-#include "flow_management.h"
 
 
 /**
@@ -70,6 +69,7 @@ volatile bool force_quit;
 struct worker_parameter {
     uint16_t queue_id;
     uint16_t port_id;
+    struct rte_hash * flow_hash_map;
 };
 
 /**

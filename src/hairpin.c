@@ -58,7 +58,7 @@ static int setup_hairpin_queues(uint16_t port_id, uint16_t prev_port_id, bool sa
     /* get the information of port */
     ret = rte_eth_dev_info_get(port_id, &dev_info);
     if (ret) {
-        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "can not get device info, port id: %u\n", port_id);
+        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "cannot get device info, port id: %u\n", port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
     general_rxq_quantity = dev_info.nb_rx_queues - HAIRPIN_QUEUES_QUANTITY;
@@ -80,7 +80,7 @@ static int setup_hairpin_queues(uint16_t port_id, uint16_t prev_port_id, bool sa
     /* get the information of peer port */
     ret = rte_eth_dev_info_get(peer_port_id, &peer_dev_info);
     if (ret) {
-        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "can not get peer device info, port id: %u\n", port_id);
+        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "cannot get peer device info, port id: %u\n", port_id);
         smto_exit(EXIT_FAILURE, err_msg);
     }
     peer_general_rxq_quantity = peer_dev_info.nb_rx_queues - HAIRPIN_QUEUES_QUANTITY;

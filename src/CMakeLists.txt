@@ -1,4 +1,4 @@
-set(SRC main.c flow_meta.c packet_processing.c setup.c hairpin.c flow_management.c)
+set(SRC main.c flow_meta.c packet_processing.c setup.c hairpin.c flow_management.c flow_event.c)
 
 add_executable(smart_offload ${SRC})
 
