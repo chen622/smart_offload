@@ -22,6 +22,7 @@
  * SOFTWARE.
 */
 
+#include <sys/time.h>
 #include "flow_management.h"
 
 enum layer_name {
@@ -31,12 +32,49 @@ enum layer_name {
     END
 };
 
-struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount, struct rte_flow_error *error) {
+struct rte_flow *create_default_jump_flow(uint16_t port_id, struct rte_flow_error *error) {
     /* The rte flow will be created. */
     struct rte_flow *flow = 0;
     /* The basic attribute of rte flow */
     struct rte_flow_attr attr = { /* Holds the flow attributes. */
             .group = 0, /* set the rule on the main group. */
+            .ingress = 1,/* Rx flow. */
+            .priority = 0,};
+    /* Define the pattern to match the packet */
+    struct rte_flow_item pattern[] = {
+            [L2] = {
+                    .type = RTE_FLOW_ITEM_TYPE_ETH,
+            },
+            [L3] = {
+                    .type = RTE_FLOW_ITEM_TYPE_IPV4,
+            },
+            [L4] = {
+                    .type = RTE_FLOW_ITEM_TYPE_VOID,
+            },
+            [END] = {
+                    .type = RTE_FLOW_ITEM_TYPE_END
+            }
+
+    };
+    struct rte_flow_action_jump jump = {.group = 1};
+    struct rte_flow_action actions[] = {
+            [0] = {
+                    .type = RTE_FLOW_ACTION_TYPE_JUMP,
+                    .conf = &jump},
+            [1] = {
+                    .type = RTE_FLOW_ACTION_TYPE_END,
+                    .conf = NULL}
+    };
+    flow = rte_flow_create(port_id, &attr, pattern, actions, error);
+    return flow;
+}
+
+struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount, struct rte_flow_error *error) {
+    /* The rte flow will be created. */
+    struct rte_flow *flow = 0;
+    /* The basic attribute of rte flow */
+    struct rte_flow_attr attr = { /* Holds the flow attributes. */
+            .group = 1, /* set the rule on the main group. */
             .ingress = 1,/* Rx flow. */
             .priority = 1,};
     /* Define the pattern to match the packet */
@@ -96,7 +134,7 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
     struct rte_flow *flow = 0;
     /* The basic attribute of rte flow */
     struct rte_flow_attr attr = { /* Holds the flow attributes. */
-            .group = 0, /* set the rule on the main group. */
+            .group = 1, /* set the rule on the main group. */
             .ingress = 1,/* Rx flow. */
             .priority = 0,};
     /* The specific pattern of ipv4 header */
@@ -164,13 +202,13 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
         zlog_warn(zc, "cannot get dev info of peer port");
         return NULL;
     }
-    uint16_t hairpin_queue_id;
-    for (hairpin_queue_id = 0; hairpin_queue_id < dev_info.nb_rx_queues; hairpin_queue_id++) {
-        struct rte_eth_dev *dev = &rte_eth_devices[port_id];
-        if (rte_eth_dev_is_rx_hairpin_queue(dev, hairpin_queue_id)) {
-            break;
-        }
-    }
+    uint16_t hairpin_queue_id = GENERAL_QUEUES_QUANTITY + HAIRPIN_QUEUES_QUANTITY - 1;
+//    for (hairpin_queue_id = 0; hairpin_queue_id < dev_info.nb_rx_queues; hairpin_queue_id++) {
+//        struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+//        if (rte_eth_dev_is_rx_hairpin_queue(dev, hairpin_queue_id)) {
+//            break;
+//        }
+//    }
 
     /* Define an action to change the dst of ipv4 */
     struct rte_flow_action_set_ipv4 ipv4_new_dst = {
@@ -215,8 +253,11 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
     };
 
 //    if ()
-
+    struct timeval start_time, end_time;
+    gettimeofday(&start_time, NULL);
     flow = rte_flow_create(port_id, &attr, pattern, actions, error);
+    gettimeofday(&end_time, NULL);
+    zlog_debug(zc, "apply offload flow use %ld us", end_time.tv_usec - start_time.tv_usec);
     return flow;
 }
 

@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     }
 
     /* Initialize the memory pool of dpdk */
-    struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", 40960, 128, 0,
+    struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NUM_MBUFS, CACHE_SIZE, 0,
                                                             RTE_MBUF_DEFAULT_BUF_SIZE,
                                                             rte_socket_id());
     if (mbuf_pool == NULL) {
@@ -153,6 +153,12 @@ int main(int argc, char **argv) {
     }
     struct rte_flow *flow = 0;
     struct rte_flow_error flow_error = {0};
+    flow = create_default_jump_flow(port_id, &flow_error);
+    if (flow == NULL) {
+        snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH,
+                 "the default jump flow create failed: %s", flow_error.message);
+        smto_exit(EXIT_FAILURE, err_msg);
+    }
     flow = create_default_rss_flow(port_id, GENERAL_QUEUES_QUANTITY, &flow_error);
     if (flow == NULL) {
         snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH,
