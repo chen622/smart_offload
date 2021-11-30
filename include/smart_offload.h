@@ -32,6 +32,8 @@
 #include <rte_hash.h>
 #include <rte_power.h>
 
+#define NUM_MBUFS 32767
+#define CACHE_SIZE 512
 
 /**
  * Used to check the link status
@@ -49,7 +51,7 @@
 /**
  * The quantity of different queues.
  */
-#define GENERAL_QUEUES_QUANTITY 8
+#define GENERAL_QUEUES_QUANTITY 1
 #define HAIRPIN_QUEUES_QUANTITY 1
 
 /**

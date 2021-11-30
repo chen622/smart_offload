@@ -31,11 +31,24 @@
 #include <rte_malloc.h>
 #include <zlog.h>
 #include "hash_key.h"
+#include "smart_offload.h"
 
 /**
  * Used to init a schedule plan to select queue by rss.
  */
-static uint16_t queue_schedule[] = {3, 1, 2, 4, 5, 7, 0, 6};
+//static uint16_t queue_schedule[] = {3, 1, 2, 4, 5, 7, 0, 6};
+static uint16_t queue_schedule[] = {0};
+
+/**
+ * Create a default jump rule which make pkts jump from group 0 to 1.
+ *
+ * @param port_id The port which the flow will be affect.
+ * @param error The error return by creating rte_flow.
+ * @return
+ *      - not NULL: Create success.
+ *      - NULL: Some error occur when create a rte_flow.
+ */
+struct rte_flow *create_default_jump_flow(uint16_t port_id, struct rte_flow_error *error);
 
 /**
  * Create a default rss rule which can match all packet.

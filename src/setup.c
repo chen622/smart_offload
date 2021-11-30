@@ -71,7 +71,7 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     rxq_conf = dev_info.default_rxconf;
     rxq_conf.offloads = port_conf.rxmode.offloads;
     for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
-        ret = rte_eth_rx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &rxq_conf, mbuf_pool);
+        ret = rte_eth_rx_queue_setup(port_id, i, 256, rte_eth_dev_socket_id(port_id), &rxq_conf, mbuf_pool);
         if (ret < 0) {
             snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "Rx queue setup failed: err=%d, port=%u", ret, port_id);
             smto_exit(EXIT_FAILURE, err_msg);
@@ -82,7 +82,7 @@ void init_port(int port_id, struct rte_mempool *mbuf_pool) {
     txq_conf = dev_info.default_txconf;
     txq_conf.offloads = port_conf.txmode.offloads;
     for (int i = 0; i < GENERAL_QUEUES_QUANTITY; i++) {
-        ret = rte_eth_tx_queue_setup(port_id, i, 512, rte_eth_dev_socket_id(port_id), &txq_conf);
+        ret = rte_eth_tx_queue_setup(port_id, i, 256, rte_eth_dev_socket_id(port_id), &txq_conf);
         if (ret < 0) {
             snprintf(err_msg, MAX_ERROR_MESSAGE_LENGTH, "Tx queue setup failed: err=%d, port=%u", ret, port_id);
             smto_exit(EXIT_FAILURE, err_msg);

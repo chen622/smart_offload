@@ -23,6 +23,7 @@
 */
 
 #include <rte_malloc.h>
+#include <sys/time.h>
 #include "flow_management.h"
 #include "smart_offload.h"
 #include "hash_key.h"
@@ -62,6 +63,9 @@ static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mas
  */
 static inline int
 packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t queue_index, uint16_t port_id) {
+    struct timeval start_time, end_time;
+    double time_use;
+    gettimeofday(&start_time, NULL);
     int ret = 0;
     union ipv4_5tuple_host *flow_map_key = rte_zmalloc("flow_key_context", sizeof(xmm_t), 0);
     /* Used to extract useful variables from memory */
@@ -88,6 +92,8 @@ packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t q
                 zlog_error(zc, "cannot add pkt:%s into flow table, return error %d", pkt_info, ret);
                 return -1;
             } else {
+                gettimeofday(&end_time, NULL);
+                zlog_debug(zc, "first packet processing delay: %ld us", end_time.tv_usec - start_time.tv_usec);
                 zlog_debug(zc, "success add a flow(%s) to flow hash table", pkt_info);
                 return 0;
             }
@@ -110,6 +116,9 @@ packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t q
                 zlog_info(zc, "a flow(%s) has been offload to network card", pkt_info);
                 flow_map_data->is_offload = true;
                 flow_map_data->flow = flow;
+                gettimeofday(&end_time, NULL);
+                zlog_debug(zc, "fifth packet processing delay: %ld us", end_time.tv_usec - start_time.tv_usec);
+                return 0;
             }
             return 0;
         } else {

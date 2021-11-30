@@ -113,9 +113,13 @@ void delete_timeout_flows(void *params) {
                 if (ret) {
                     zlog_error(zc, "cannot query the counter of a timeout flow: %s", flow_error.message);
                 } else {
-                    zlog_info(zc, "flow(%s) timeout, it has %lu packets and total size is %lu Bytes.", pkt_info,
-                              counter.hits + flow_data->packet_amount, counter.bytes + flow_data->flow_size);
+                    zlog_info(zc,
+                              "flow(%s) timeout, total has %lu packets, offload has %lu packets and up has %u packets.",
+                              pkt_info,
+                              flow_data->packet_amount + counter.hits, counter.hits, flow_data->packet_amount);
                 }
+
+                /* Delete the flow from nic */
                 ret = rte_flow_destroy(port_id, flow_data->flow, &flow_error);
                 if (ret) {
                     zlog_error(zc, "cannot remove a offload rte_flow from nic: %s", flow_error.message);
