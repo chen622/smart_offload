@@ -22,6 +22,7 @@
  * SOFTWARE.
 */
 #include <rte_malloc.h>
+#include <sys/time.h>
 #include "flow_management.h"
 #include "flow_meta.h"
 #include "smart_offload.h"
@@ -42,36 +43,6 @@ static void signal_handler(int signum) {
     }
 }
 
-void smto_exit(int exit_code, const char *format) {
-    if (exit_code == EXIT_SUCCESS) {
-        dzlog_info("%s", format);
-    } else {
-        dzlog_error("%s", format);
-    }
-
-    destroy_hairpin();
-
-    uint16_t port_id;
-    RTE_ETH_FOREACH_DEV(port_id) {
-        struct rte_flow_error error = {0};
-        int ret = rte_flow_flush(port_id, &error);
-        if (ret) {
-            dzlog_error("cannot flush rte flow on port#%u: %s", port_id, error.message);
-        }
-        rte_eth_dev_stop(port_id);
-        rte_eth_dev_close(port_id);
-    }
-
-    uint16_t lcore_id = 0;
-    RTE_LCORE_FOREACH_WORKER(lcore_id) {
-        rte_power_exit(lcore_id);
-    }
-
-    /* clean up the EAL */
-    rte_eal_cleanup();
-    zlog_fini();
-    rte_exit(exit_code, "%s", format);
-}
 
 int main(int argc, char **argv) {
 
@@ -151,6 +122,8 @@ int main(int argc, char **argv) {
         }
         setup_two_port_hairpin();
     }
+
+
     struct rte_flow *flow = 0;
     struct rte_flow_error flow_error = {0};
     flow = create_default_jump_flow(port_id, &flow_error);

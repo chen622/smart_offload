@@ -60,6 +60,8 @@
 #define ALL_32_BITS 0xffffffff
 #define BIT_8_TO_15 0x0000ff00
 
+#define GET_NANOSECOND(start_time) (rte_rdtsc() - start_tsc) / (double) rte_get_tsc_hz() * 1000 * 1000 * 1000
+
 /**
  * Shutdown flag.
  */

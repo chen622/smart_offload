@@ -50,3 +50,4 @@ include_directories(${CMAKE_SOURCE_DIR}/include ${LIBDPDK_INCLUDE_DIRS})
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_subdirectory(src)
+add_subdirectory(test)
