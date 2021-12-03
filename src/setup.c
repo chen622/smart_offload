@@ -122,3 +122,34 @@ void assert_link_status(uint16_t port_id) {
     }
 }
 
+void smto_exit(int exit_code, const char *format) {
+    if (exit_code == EXIT_SUCCESS) {
+        dzlog_info("%s", format);
+    } else {
+        dzlog_error("%s", format);
+    }
+
+    destroy_hairpin();
+
+    uint16_t port_id;
+    RTE_ETH_FOREACH_DEV(port_id) {
+        struct rte_flow_error error = {0};
+        int ret = rte_flow_flush(port_id, &error);
+        if (ret) {
+            dzlog_error("cannot flush rte flow on port#%u: %s", port_id, error.message);
+        }
+        rte_eth_dev_stop(port_id);
+        rte_eth_dev_close(port_id);
+    }
+
+    uint16_t lcore_id = 0;
+    RTE_LCORE_FOREACH_WORKER(lcore_id) {
+        rte_power_exit(lcore_id);
+    }
+
+    /* clean up the EAL */
+    rte_eal_cleanup();
+    zlog_fini();
+    rte_exit(exit_code, "%s", format);
+}
+

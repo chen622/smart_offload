@@ -63,37 +63,52 @@ static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mas
  */
 static inline int
 packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t queue_index, uint16_t port_id) {
-    struct timeval start_time, end_time;
-    double time_use;
-    gettimeofday(&start_time, NULL);
+    union ipv4_5tuple_host *flow_map_key = 0;
+    uint64_t start_tsc = rte_rdtsc();
     int ret = 0;
-    union ipv4_5tuple_host *flow_map_key = rte_zmalloc("flow_key_context", sizeof(xmm_t), 0);
+    flow_map_key = rte_zmalloc("flow_key_context", sizeof(xmm_t), 0);
+    zlog_debug(zc, "flow_key rte_create use %f ns", GET_NANOSECOND(start_tsc));
+//    rte_free(flow_map_key);
+//    start_tsc = rte_rdtsc();
+//    flow_map_key = malloc(sizeof(xmm_t));
+//    memset(flow_map_key, 0 , sizeof(xmm_t));
+//    free(flow_map_key);
+//    zlog_debug(zc, "flow_key create use %f ns", GET_NANOSECOND(start_tsc));
     /* Used to extract useful variables from memory */
     mask0 = (rte_xmm_t) {.u32 = {BIT_8_TO_15, ALL_32_BITS,
                                  ALL_32_BITS, ALL_32_BITS}};
 
     if (m->packet_type & RTE_PTYPE_L3_IPV4 && (m->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
 
+        start_tsc = rte_rdtsc();
         get_ipv4_5tuple(m, mask0.x, flow_map_key);
+        zlog_debug(zc, "get ip header use %f ns", GET_NANOSECOND(start_tsc));
 
+        start_tsc = rte_rdtsc();
         char pkt_info[MAX_ERROR_MESSAGE_LENGTH];
         dump_pkt_info(flow_map_key, queue_index, pkt_info, MAX_ERROR_MESSAGE_LENGTH);
+        zlog_debug(zc, "dump pkt use %f ns", GET_NANOSECOND(start_tsc));
 
+        start_tsc = rte_rdtsc();
         struct flow_meta *flow_map_data = 0;
         ret = rte_hash_lookup_data(flow_hash_map, flow_map_key, (void **) &flow_map_data);
+        zlog_debug(zc, "hash lookup use %f ns", GET_NANOSECOND(start_tsc));
+
 //
 //        zlog_debug(zc, "packet(%u)(%s)(%d): %s", m->pkt_len, m->packet_type & RTE_PTYPE_L4_UDP ? "UDP" : "TCP", ret,
 //                   pkt_info);
 
         if (ret == -ENOENT) { // A flow that has not yet appeared
             flow_map_data = create_flow_meta(m->pkt_len);
+            start_tsc = rte_rdtsc();
             ret = rte_hash_add_key_data(flow_hash_map, flow_map_key, flow_map_data);
+            zlog_debug(zc, "add hash map use %f ns", GET_NANOSECOND(start_tsc));
             if (ret != 0) {
                 zlog_error(zc, "cannot add pkt:%s into flow table, return error %d", pkt_info, ret);
                 return -1;
             } else {
-                gettimeofday(&end_time, NULL);
-                zlog_debug(zc, "first packet processing delay: %ld us", end_time.tv_usec - start_time.tv_usec);
+//                zlog_debug(zc, "first packet processing delay: %f ns",
+//                           GET_NANOSECOND(start_tsc));
                 zlog_debug(zc, "success add a flow(%s) to flow hash table", pkt_info);
                 return 0;
             }
@@ -107,8 +122,12 @@ packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t q
             /* Assume the flow can be offloaded now */
             if (flow_map_data->packet_amount == 5) {
                 struct rte_flow_error flow_error = {0};
+
+                start_tsc = rte_rdtsc();
                 struct rte_flow *flow = create_offload_rte_flow(port_id, flow_hash_map, flow_map_key, zc,
                                                                 &flow_error);
+                zlog_debug(zc, "create and apply rte_flow use %f ns", GET_NANOSECOND(start_tsc));
+
                 if (flow == NULL) {
                     zlog_error(zc, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
                     return -2;
@@ -116,8 +135,8 @@ packet_processing(struct rte_hash *flow_hash_map, struct rte_mbuf *m, uint16_t q
                 zlog_info(zc, "a flow(%s) has been offload to network card", pkt_info);
                 flow_map_data->is_offload = true;
                 flow_map_data->flow = flow;
-                gettimeofday(&end_time, NULL);
-                zlog_debug(zc, "fifth packet processing delay: %ld us", end_time.tv_usec - start_time.tv_usec);
+//                zlog_debug(zc, "fifth packet processing delay: %f ns",
+//                           GET_NANOSECOND(start_tsc));
                 return 0;
             }
             return 0;

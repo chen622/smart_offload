@@ -253,11 +253,9 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
     };
 
 //    if ()
-    struct timeval start_time, end_time;
-    gettimeofday(&start_time, NULL);
+    uint64_t start_tsc = rte_rdtsc();
     flow = rte_flow_create(port_id, &attr, pattern, actions, error);
-    gettimeofday(&end_time, NULL);
-    zlog_debug(zc, "apply offload flow use %ld us", end_time.tv_usec - start_time.tv_usec);
+//    zlog_debug(zc, "apply offload flow use %f ns", GET_NANOSECOND(start_tsc));
     return flow;
 }
 
