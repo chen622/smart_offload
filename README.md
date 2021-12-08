@@ -21,6 +21,12 @@
 
 
 ## 四、快速上手
+
+### 配置要求：
+- DPDK 20.11.3.0.4
+- 配备 Mellanox/Nvidia 智能网卡的 x86 服务器
+
+### 运行指令
 ```bash
 mkdir build && cd build
 cmake ..
