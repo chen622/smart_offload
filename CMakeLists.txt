@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(smart_offload)
 
-set(CMAKE_C_STANDARD 11)
-
+set(CMAKE_C_FLAGS "-std=gnu99")
 
 # configure build type
 if (NOT CMAKE_BUILD_TYPE)
@@ -34,13 +33,12 @@ find_package(Threads REQUIRED)
 # build third-party package zlog
 add_subdirectory(vendor)
 ExternalProject_Get_Property(ZLOG INSTALL_DIR)
-include_directories(${INSTALL_DIR}/include)
 add_library(zlog SHARED IMPORTED)
-set_target_properties(
-        zlog
-        PROPERTIES IMPORTED_LOCATION
-        ${INSTALL_DIR}/lib/libzlog.a
-)
+add_dependencies(zlog ZLOG)
+set_target_properties(zlog PROPERTIES
+        IMPORTED_LOCATION ${INSTALL_DIR}/lib/libzlog.a
+        INCLUDE_DIRECTORIES ${INSTALL_DIR}/include)
+
 configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
 
 link_directories(${LIBDPDK_LIBRARY_DIRS})

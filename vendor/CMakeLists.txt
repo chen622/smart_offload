@@ -1,16 +1,16 @@
 include(ExternalProject)
 
-set(VENDOR_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(VENDOR_INSTALL ${VENDOR_ROOT}/install)
+set(VENDOR_ROOT ${CMAKE_BINARY_DIR}/vendor)
+set(VENDOR_BUILD ${CMAKE_BINARY_DIR}/vendor/vbuild)
 
-set(ZLOG_URL ${VENDOR_ROOT}/zlog-1.2.15.zip)
+set(ZLOG_URL ${CMAKE_CURRENT_SOURCE_DIR}/zlog-1.2.15.zip)
 ExternalProject_Add(ZLOG
         PREFIX ${VENDOR_ROOT}/zlog
         URL ${ZLOG_URL}
         CONFIGURE_COMMAND pwd
         BUILD_IN_SOURCE 1
-        BUILD_COMMAND make PREFIX=${VENDOR_INSTALL}
-        INSTALL_COMMAND make PREFIX=${VENDOR_INSTALL} install
-        INSTALL_DIR ${VENDOR_INSTALL}
+        BUILD_COMMAND make PREFIX=${VENDOR_BUILD}
+        INSTALL_COMMAND make PREFIX=${VENDOR_BUILD} install
+        INSTALL_DIR ${VENDOR_BUILD}
         )
 
