@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     }
 
     /* Setup zlog */
-    ret = dzlog_init("conf/zlog.conf", "main");
+    ret = dzlog_init(zlog_conf, "main");
     if (ret) {
         smto_exit(EXIT_FAILURE, "zlog init failed");
     }
