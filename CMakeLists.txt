@@ -35,6 +35,7 @@ add_subdirectory(vendor)
 ExternalProject_Get_Property(ZLOG INSTALL_DIR)
 add_library(zlog SHARED IMPORTED)
 add_dependencies(zlog ZLOG)
+include_directories(${INSTALL_DIR}/include)
 set_target_properties(zlog PROPERTIES
         IMPORTED_LOCATION ${INSTALL_DIR}/lib/libzlog.a
         INCLUDE_DIRECTORIES ${INSTALL_DIR}/include)
