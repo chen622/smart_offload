@@ -32,8 +32,18 @@
 #include <rte_hash.h>
 #include <rte_power.h>
 
-#define NUM_MBUFS 32767
-#define CACHE_SIZE 512
+/**
+ * The number of elements in the mbuf pool. The optimum size is (2^q - 1). Each mbuf is 2176 bytes.
+ */
+#define NUM_MBUFS 262135
+/**
+ * Size of the per-core object cache. Must lower or equal to RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5
+ */
+#define CACHE_SIZE 509
+/**
+ * Number of rx/tx descriptors in the queue.
+ */
+#define QUEUE_DESC_NUMBER 512
 
 /**
  * Used to check the link status
@@ -42,7 +52,7 @@
 #define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
 
 /**
- * default to 4k hash entries (approx)
+ * Default to 4k hash entries (approx)
  */
 #define MAX_HASH_ENTRIES (1024*4)
 
@@ -51,7 +61,7 @@
 /**
  * The quantity of different queues.
  */
-#define GENERAL_QUEUES_QUANTITY 1
+#define GENERAL_QUEUES_QUANTITY 8
 #define HAIRPIN_QUEUES_QUANTITY 1
 
 /**
@@ -73,7 +83,7 @@ volatile bool force_quit;
 struct worker_parameter {
     uint16_t queue_id;
     uint16_t port_id;
-    struct rte_hash * flow_hash_map;
+    struct rte_hash *flow_hash_map;
 };
 
 /**

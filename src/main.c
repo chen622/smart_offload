@@ -29,7 +29,7 @@
 #include "flow_event.h"
 
 #ifdef RELEASE
-char *zlog_conf = "/etc/natexp/zlog.conf";
+char *zlog_conf = "/etc/smart_offload/zlog.conf";
 #else
 char *zlog_conf = "conf/zlog.conf";
 #endif
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
     rte_eal_mp_wait_lcore();
 
 
-    /* free the memory of flow meta data and the flow hash map*/
+    /* free the memory of flow metadata and the flow hash map*/
     int32_t key_count = rte_hash_count(flow_hash_map);
     dzlog_debug("%d flow keys has been added into flow hash map", key_count);
     if (key_count > 0) {
