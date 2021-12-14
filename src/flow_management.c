@@ -22,7 +22,6 @@
  * SOFTWARE.
 */
 
-#include <sys/time.h>
 #include "flow_management.h"
 
 enum layer_name {

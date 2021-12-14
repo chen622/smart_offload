@@ -25,9 +25,6 @@
 #include <rte_malloc.h>
 #include <sys/time.h>
 #include "flow_management.h"
-#include "smart_offload.h"
-#include "hash_key.h"
-#include "flow_meta.h"
 
 static __thread zlog_category_t *zc = 0;
 static rte_xmm_t mask0;
