@@ -30,8 +30,11 @@
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <zlog.h>
+#include <sys/time.h>
 #include "hash_key.h"
 #include "smart_offload.h"
+#include "flow_meta.h"
+
 
 /**
  * Used to init a schedule plan to select queue by rss.

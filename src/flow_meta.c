@@ -22,7 +22,6 @@
  * SOFTWARE.
 */
 
-#include <rte_malloc.h>
 #include "flow_meta.h"
 
 

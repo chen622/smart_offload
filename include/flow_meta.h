@@ -27,6 +27,7 @@
 
 #include <rte_flow.h>
 #include <rte_hash.h>
+#include <rte_malloc.h>
 #include "hash_key.h"
 
 /**
