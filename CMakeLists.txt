@@ -14,7 +14,10 @@ endif ()
 if (CMAKE_BUILD_TYPE MATCHES Release)
     set(CMAKE_C_FLAGS_RELEASE "-O3")
     add_definitions(-DRELEASE)
+    configure_file(conf/zlog.conf /etc/smart_offload/zlog.conf COPYONLY)
+    file(MAKE_DIRECTORY /opt/tsg/smart_offload/log)
 else ()
+    configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
     set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 endif ()
 
@@ -40,7 +43,6 @@ set_target_properties(zlog PROPERTIES
         IMPORTED_LOCATION ${INSTALL_DIR}/lib/libzlog.a
         INCLUDE_DIRECTORIES ${INSTALL_DIR}/include)
 
-configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
 
 link_directories(${LIBDPDK_LIBRARY_DIRS})
 
