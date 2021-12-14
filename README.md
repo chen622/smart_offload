@@ -13,12 +13,13 @@
 
 ## 三、待验证部分
 
-- [ ]  对流下发的速率上限进行测试
+- [x]  对流下发的速率上限进行测试
 - [ ]  对流的数量上限进行测试
 - [ ]  对空pattern的rte_flow使用rss
 - [ ]  一组hairpin是否可以实现双向通信
-- [ ]  如何实现定时查询 age？回调？alarm触发？
+- [x]  如何实现定时查询 age？回调？alarm触发？
 
+部分测试结果：https://chenmingc.notion.site/SMTO-835fda18304c44e8862697f1ebcde53b
 
 ## 四、快速上手
 
@@ -31,5 +32,6 @@
 mkdir build && cd build
 cmake ..
 make
-./smart_offload -l 0-8
+# -l 用于指定核心 -a 用于指定网口
+./smart_offload -l 1-9 -a 82:00.0
 ```
