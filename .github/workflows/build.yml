@@ -32,8 +32,8 @@ jobs:
         cache-name: cache-dpdk
       with:
         # npm cache files are stored in `~/.npm` on Linux/macOS
-        path: ${{ env.DOWNLOAD_DIR }}
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.DPDK_FILE_NAME }}
+        path: "${{github.workspace}}/${{ env.DOWNLOAD_DIR }}"
+        key: ${{runner.os}}-${{runner.arch}}-${{ env.cache-name }}-${{ env.DPDK_FILE_NAME }}
 
     - if: ${{ steps.cache-dpdk.outputs.cache-hit == false }}
       name: Build DPDK
