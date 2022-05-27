@@ -34,7 +34,6 @@ char *zlog_conf = "/etc/smart_offload/zlog.conf";
 char *zlog_conf = "conf/zlog.conf";
 #endif
 
-
 static void signal_handler(int signum) {
     if (signum == SIGINT || signum == SIGTERM) {
         dzlog_info("Signal %d received, preparing to exit...",
