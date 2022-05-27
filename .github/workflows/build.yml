@@ -11,8 +11,8 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
   PIP_DEPENDENCIES: 'meson ninja pyelftools'
-  DOWNLOAD_DIR: '~/download'
-  DPDK_FILE_NAME: 'dpdk-21.11.1.tar.xz'
+  DOWNLOAD_DIR: 'vendor/dpdk'
+  DPDK_FILE_NAME: 'dpdk-20.11.tar.xz'
 
 jobs:
   build:
@@ -39,7 +39,6 @@ jobs:
       name: Build DPDK
       env:
         DPDK_URL: 'https://fast.dpdk.org/rel/'
-        PIP_DEPENDENCIES: 'meson ninja pyelftools'
       run: |
         mkdir -p $DOWNLOAD_DIR
         cd $DOWNLOAD_DIR
@@ -49,16 +48,18 @@ jobs:
         sudo meson build
         cd build
         sudo ninja
+    
+    - name: Install DPDK
+      run: |
+        cd $DOWNLOAD_DIR/dpdk-*/build/
         sudo ninja install
         sudo sh -c "echo '/usr/local/lib' >> /etc/ld.so.conf"
-        sudo sh -c "echo '/usr/local/lib64' >> /etc/ld.so.conf"
         sudo ldconfig
-        sudo pkg-config --exists libdpdk
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cd ${{github.workspace}} && cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run:  cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       # Build your program with the given configuration
@@ -78,6 +79,7 @@ jobs:
         path: |
           ${{github.workspace}}
           !${{github.workspace}}/build
+          !${{github.workspace}}/${{env.DOWNLOAD_DIR}}
         # The desired behavior if no files are found using the provided path.
         # Available Options:
         # warn: Output a warning but do not fail the action
