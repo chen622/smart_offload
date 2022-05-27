@@ -18,7 +18,10 @@
 		"ms-vscode.cpptools",
 		"ms-vscode.cmake-tools",
 		"twxs.cmake",
-		"ms-vscode.cpptools-extension-pack"
+		"ms-vscode.cpptools-extension-pack",
+		"mads-hartmann.bash-ide-vscode",
+		"redjue.git-commit-plugin",
+		"GitHub.copilot"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
