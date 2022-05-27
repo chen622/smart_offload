@@ -75,7 +75,7 @@
 /**
  * Shutdown flag.
  */
-volatile bool force_quit;
+extern volatile bool force_quit;
 
 /**
  * Used to pass parameters to the worker.
