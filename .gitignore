@@ -148,3 +148,7 @@ _deps
 *.iml
 out
 gen
+
+
+/build
+/.vscode
