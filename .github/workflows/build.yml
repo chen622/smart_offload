@@ -1,4 +1,4 @@
-name: CMake
+name: Build
 
 on:
   push:
@@ -28,21 +28,21 @@ jobs:
         DPDK_URL: 'https://fast.dpdk.org/rel/'
         PIP_DEPENDENCIES: 'meson ninja pyelftools'
       run: |
-        apt-get -y install python3 python3-pip
-        pip3 install $PIP_DEPENDENCIES
-        mkdir -p $DOWNLOAD_DIR
-        cd $DOWNLOAD_DIR
-        wget $DPDK_URL$DPDK_FILE_NAME
-        tar xJf $DPDK_FILE_NAME
-        cd dpdk-*/
-        meson build
-        cd build
-        ninja
-        ninja install
-        echo "/usr/local/lib" >> /etc/ld.so.conf.d/libc.conf
-        echo "/usr/local/lib64" >> /etc/ld.so.conf.d/libc.conf
-        ldconfig
-        pkg-config --exists libdpdk
+        sudo apt-get -y install python3 python3-pip
+        sudo pip3 install $PIP_DEPENDENCIES
+        sudo mkdir -p $DOWNLOAD_DIR
+        sudo cd $DOWNLOAD_DIR
+        sudo wget $DPDK_URL$DPDK_FILE_NAME
+        sudo tar xJf $DPDK_FILE_NAME
+        sudo cd dpdk-*/
+        sudo meson build
+        sudo cd build
+        sudo ninja
+        sudo ninja install
+        sudo echo "/usr/local/lib" >> /etc/ld.so.conf.d/libc.conf
+        sudo echo "/usr/local/lib64" >> /etc/ld.so.conf.d/libc.conf
+        sudo ldconfig
+        sudo pkg-config --exists libdpdk
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
