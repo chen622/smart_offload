@@ -45,14 +45,14 @@ jobs:
         wget $DPDK_URL$DPDK_FILE_NAME
         tar xJf $DPDK_FILE_NAME
         cd dpdk-*/
-        sudo meson build
+        sudo sh -c "meson build > /dev/null"
         cd build
-        sudo ninja
+        sudo sh -c "ninja > /dev/null"
     
     - name: Install DPDK
       run: |
         cd $DOWNLOAD_DIR/dpdk-*/build/
-        sudo ninja install
+        sudo sh -c "ninja install > /dev/null"
         sudo sh -c "echo '/usr/local/lib' >> /etc/ld.so.conf"
         sudo ldconfig
 
