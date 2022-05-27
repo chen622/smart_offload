@@ -50,8 +50,8 @@ jobs:
         cd build
         sudo ninja
         sudo ninja install
-        sudo echo "/usr/local/lib" >> /etc/ld.so.conf.d/libc.conf
-        sudo echo "/usr/local/lib64" >> /etc/ld.so.conf.d/libc.conf
+        sudo sh -c "echo '/usr/local/lib' >> /etc/ld.so.conf"
+        sudo sh -c "echo '/usr/local/lib64' >> /etc/ld.so.conf"
         sudo ldconfig
         sudo pkg-config --exists libdpdk
 
