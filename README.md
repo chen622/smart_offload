@@ -1,6 +1,8 @@
-# smart_offload
+# Smart Offload
 
-[中文](https://github.com/chen622/smart_offload/blob/main/README-ZH.md)
+[![Build](https://github.com/chen622/smart_offload/actions/workflows/build.yml/badge.svg)](https://github.com/chen622/smart_offload/actions/workflows/build.yml)
+
+[中文版本](https://github.com/chen622/smart_offload/blob/main/README-ZH.md)
 
 ## 1. Main Feature
 
