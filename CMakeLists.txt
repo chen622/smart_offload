@@ -11,11 +11,16 @@ else ()
     message(STATUS "Predefined CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE} ")
 endif ()
 
+if (VM)
+    add_definitions(-DVM)
+endif ()
+
 if (CMAKE_BUILD_TYPE MATCHES Release)
     set(CMAKE_C_FLAGS_RELEASE "-O3")
     add_definitions(-DRELEASE)
-    configure_file(conf/zlog.conf /etc/smart_offload/zlog.conf COPYONLY)
-    file(MAKE_DIRECTORY /opt/tsg/smart_offload/log)
+    configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
+    # configure_file(conf/zlog.conf /etc/smart_offload/zlog.conf COPYONLY)
+    # file(MAKE_DIRECTORY /opt/tsg/smart_offload/log)
 else ()
     configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
     set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
@@ -24,29 +29,10 @@ endif ()
 # avoid Apple Silicon impact
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 
-message(STATUS $ENV{PKG_CONFIG_PATH})
+# build third-party package
+include(${CMAKE_SOURCE_DIR}/vendor/CMakeLists.txt)
 
-# import dpdk library
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBDPDK REQUIRED libdpdk)
-
-# import thread
-find_package(Threads REQUIRED)
-
-# build third-party package zlog
-add_subdirectory(vendor)
-ExternalProject_Get_Property(ZLOG INSTALL_DIR)
-add_library(zlog SHARED IMPORTED)
-add_dependencies(zlog ZLOG)
-include_directories(${INSTALL_DIR}/include)
-set_target_properties(zlog PROPERTIES
-        IMPORTED_LOCATION ${INSTALL_DIR}/lib/libzlog.a
-        INCLUDE_DIRECTORIES ${INSTALL_DIR}/include)
-
-
-link_directories(${LIBDPDK_LIBRARY_DIRS})
-
-include_directories(${CMAKE_SOURCE_DIR}/include ${LIBDPDK_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/include/deps)
 
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 

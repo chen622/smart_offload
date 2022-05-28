@@ -29,6 +29,7 @@
 static __thread zlog_category_t *zc = 0;
 static rte_xmm_t mask0;
 
+volatile bool force_quit = false;
 
 /**
  * Extract ipv4 5 tuple from the mbuf by SSE3 instruction.

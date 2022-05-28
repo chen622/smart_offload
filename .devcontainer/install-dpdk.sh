@@ -3,7 +3,7 @@
 #set -e
 
 DOWNLOAD_DIR="/root/download"
-DPDK_FILE_NAME="dpdk-21.11.1.tar.xz"
+DPDK_FILE_NAME="dpdk-20.11.5.tar.xz"
 DPDK_URL="https://fast.dpdk.org/rel/${DPDK_FILE_NAME}"
 PIP_DEPENDENCIES="meson ninja pyelftools"
 
@@ -23,8 +23,8 @@ cd build
 ninja
 ninja install
 
-echo "/usr/local/lib" >> /etc/ld.so.conf.d/libc.conf
-echo "/usr/local/lib64" >> /etc/ld.so.conf.d/libc.conf
+echo "/usr/local/lib" >> /etc/ld.so.conf
+echo "/usr/local/lib64" >> /etc/ld.so.conf
 ldconfig
 
 pkg-config --exists libdpdk
