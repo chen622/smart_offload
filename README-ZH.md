@@ -1,5 +1,7 @@
 # smart_offload
 
+[![Build](https://github.com/chen622/smart_offload/actions/workflows/build.yml/badge.svg)](https://github.com/chen622/smart_offload/actions/workflows/build.yml)
+
 ## 一、主要功能
 
 - 将流经的数据包上送到处理线程中，并在第 n 个包后下发对应的流表进行卸载
@@ -24,7 +26,7 @@
 ## 四、快速上手
 
 ### 配置要求：
-- DPDK 20.11.3.0.4
+- DPDK 20.11.5
 - 配备 Mellanox/Nvidia 智能网卡的 x86 服务器
 
 ### 运行指令
@@ -35,3 +37,9 @@ make
 # -l 用于指定核心 -a 用于指定网口
 ./smart_offload -l 1-9 -a 82:00.0
 ```
+
+## 五、问题
+
+### Unable to set Power Management Environment
+
+无法锁定 CPU 的运行频率，可能是由于缺乏相关权限。可以通过增加一个定义`-DVM=true`来关闭此功能

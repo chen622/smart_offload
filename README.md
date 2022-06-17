@@ -18,8 +18,8 @@ The diagram is written with Chinese, you can see the English comment of function
 ## 3. Quick Start
 
 ### Requirements：
-- DPDK 20.11.3.0.4
-- x86 server with Mellanox/Nvidia smart-nic.
+- DPDK 20.11.5
+- x86 server with Mellanox/Nvidia SmartNic.
 
 ### Run
 ```bash
@@ -29,3 +29,9 @@ make
 # -l Specify the core; -a Specify the port
 ./smart_offload -l 1-9 -a 82:00.0
 ```
+
+## 4. Questions
+
+### Unable to set Power Management Environment
+
+Can not set frequency of CPU cores, you can a definition `-DVM=true` to disable this feature.

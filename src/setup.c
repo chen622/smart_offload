@@ -142,11 +142,12 @@ void smto_exit(int exit_code, const char *format) {
         rte_eth_dev_stop(port_id);
         rte_eth_dev_close(port_id);
     }
-
+#ifndef VM
     uint16_t lcore_id = 0;
     RTE_LCORE_FOREACH_WORKER(lcore_id) {
         rte_power_exit(lcore_id);
     }
+#endif
 
     /* clean up the EAL */
     rte_eal_cleanup();
