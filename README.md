@@ -1,8 +1,8 @@
 # Smart Offload
 
 [![Build](https://github.com/chen622/smart_offload/actions/workflows/build.yml/badge.svg)](https://github.com/chen622/smart_offload/actions/workflows/build.yml)
-
-[中文版本](https://github.com/chen622/smart_offload/blob/main/README-ZH.md)
+[![](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-%E4%B8%AD%E6%96%87%E7%89%88-blue)](https://github.com/chen622/smart_offload/blob/main/README-ZH.md)
+[![](https://img.shields.io/badge/document-English-blue)](https://github.com/chen622/smart_offload/blob/main/README.md)
 
 ## 1. Main Feature
 
