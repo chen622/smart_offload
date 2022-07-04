@@ -39,7 +39,6 @@ static int query_counter(uint16_t port_id, struct rte_flow *flow, struct rte_flo
                          struct rte_flow_error *error) {
     /* Define the query action */
     struct rte_flow_action_count dedicated_counter = {
-            .shared = 0,
     };
     struct rte_flow_action actions[2];
     actions[1].type = RTE_FLOW_ACTION_TYPE_END;

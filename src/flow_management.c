@@ -107,7 +107,7 @@ struct rte_flow *create_default_rss_flow(uint16_t port_id, uint16_t queue_amount
             0x6D, 0x5A, 0x6D, 0x5A,
     };
     struct rte_flow_action_rss rss = {
-            .level = 0, /* RSS should be done on inner header. */
+            .level = 1, /* RSS should be done on inner header. */
             .queue = queue_schedule, /* Set the selected target queues. */
             .queue_num = queue_amount, /* The number of queues. */
             .types =  ETH_RSS_IP,
@@ -149,7 +149,7 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
             .hdr = {
                     .src_addr = RTE_BE32(0xffffffff),
                     .dst_addr = RTE_BE32(0xffffffff),
-                    .next_proto_id = 0xffff
+                    .next_proto_id = 0xff
             }
     };
     /* Define the pattern to match the packet */
@@ -219,7 +219,6 @@ create_offload_rte_flow(uint16_t port_id, struct rte_hash *flow_hash_table, unio
     };
     /* Define a counter to count the quantity of packet */
     struct rte_flow_action_count dedicated_counter = {
-            .shared = 0,
     };
 
     /* Define an action to set a hook which will be executed when the flow time out */

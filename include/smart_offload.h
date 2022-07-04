@@ -61,7 +61,7 @@
 /**
  * The quantity of different queues.
  */
-#define GENERAL_QUEUES_QUANTITY 8
+#define GENERAL_QUEUES_QUANTITY 1
 #define HAIRPIN_QUEUES_QUANTITY 1
 
 /**

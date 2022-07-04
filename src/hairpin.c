@@ -131,8 +131,6 @@ static int hairpin_port_bind(uint16_t port_id, int direction) {
     if (peer_ports_num < 0)
         return peer_ports_num; /* errno. */
     for (i = 0; i < peer_ports_num; i++) {
-        if (!rte_eth_devices[i].data->dev_started)
-            continue;
         ret = rte_eth_hairpin_bind(port_id, peer_ports[i]);
         if (ret)
             return ret;
@@ -161,8 +159,6 @@ static int hairpin_port_unbind(uint16_t port_id) {
         return pair_port_num;
 
     for (i = 0; i < pair_port_num; i++) {
-        if (!rte_eth_devices[i].data->dev_started)
-            continue;
         rte_eth_hairpin_unbind(pair_port_list[i], port_id);
     }
     return 0;

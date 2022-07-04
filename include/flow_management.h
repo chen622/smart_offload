@@ -39,8 +39,8 @@
 /**
  * Used to init a schedule plan to select queue by rss.
  */
-static uint16_t queue_schedule[] = {3, 1, 2, 4, 5, 7, 0, 6};
-//static uint16_t queue_schedule[] = {0};
+//static uint16_t queue_schedule[] = {3, 1, 2, 4, 5, 7, 0, 6};
+static uint16_t queue_schedule[] = {0};
 
 /**
  * Create a default jump rule which make pkts jump from group 0 to 1.
