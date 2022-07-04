@@ -99,7 +99,7 @@ struct worker_parameter {
 void smto_exit(int exit_code, const char *format);
 
 /**
- * Configure a network port and initialize the rx/tx queues.
+ * Configure a port and initialize the rx/tx queues.
  *
  * @param port_id
  *   The ID of port which will be configured.
@@ -124,7 +124,7 @@ void setup_one_port_hairpin(int port_id);
 int destroy_hairpin();
 
 /**
- * Check the status of the network port.
+ * Check the status of the port.
  *
  * @param port_id
  *   The port will be checked.

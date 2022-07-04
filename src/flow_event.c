@@ -53,6 +53,11 @@ static int query_counter(uint16_t port_id, struct rte_flow *flow, struct rte_flo
     return 0;
 }
 
+/***
+ * Used to delete timeout flows which will be triggered by age event.
+ *
+ * @param params
+ */
 void delete_timeout_flows(void *params) {
     /* Get parameters and free memory */
     zlog_category_t *zc = zlog_get_category("flow_event");
