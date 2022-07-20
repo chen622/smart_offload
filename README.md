@@ -12,7 +12,6 @@
 
 ## 2. Module Design
 
-The diagram is written with Chinese, you can see the English comment of functions in the code.
 ![module](https://img.ccm.ink/smart_offload.jpg)
 
 ## 3. Quick Start
