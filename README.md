@@ -12,7 +12,6 @@
 
 ## 2. Module Design
 
-The diagram is written with Chinese, you can see the English comment of functions in the code.
 ![module](images/smart_offload.jpg)
 
 ## 3. Thread Design
@@ -22,7 +21,7 @@ The diagram is written with Chinese, you can see the English comment of function
 ## 3. Quick Start
 
 ### Requirements：
-- DPDK 20.11.5
+- DPDK 21.11.3
 - x86 server with Mellanox/Nvidia SmartNic.
 
 ### Run
