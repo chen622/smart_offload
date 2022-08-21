@@ -13,7 +13,11 @@
 
 ## 二、模块设计
 
-![module](https://img.ccm.ink/smart_offload.jpg)
+![module](images/smart_offload.jpg)
+
+## 三、线程设计
+
+![threads](images/threads.jpg)
 
 ## 三、待验证部分
 

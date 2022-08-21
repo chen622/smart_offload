@@ -13,7 +13,11 @@
 ## 2. Module Design
 
 The diagram is written with Chinese, you can see the English comment of functions in the code.
-![module](https://img.ccm.ink/smart_offload.jpg)
+![module](images/smart_offload.jpg)
+
+## 3. Thread Design
+
+![threads](images/threads.jpg)
 
 ## 3. Quick Start
 

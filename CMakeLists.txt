@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(smart_offload)
 
-set(CMAKE_C_FLAGS "-std=gnu99")
+set(CMAKE_C_FLAGS "-std=gnu11")
 
 # configure build type
 if (NOT CMAKE_BUILD_TYPE)
@@ -25,6 +25,8 @@ else ()
     configure_file(conf/zlog-debug.conf ${CMAKE_CURRENT_BINARY_DIR}/conf/zlog.conf COPYONLY)
     set(CMAKE_C_FLAGS_DEBUG "-O0 -g")
 endif ()
+
+add_definitions(-DALLOW_EXPERIMENTAL_API)
 
 # avoid Apple Silicon impact
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
