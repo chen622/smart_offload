@@ -31,6 +31,7 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_hash.h>
+#include <rte_ring.h>
 #include <rdarm.h>
 
 #include "smto_comon.h"
@@ -48,9 +49,10 @@
 /// The packet descriptor of each queue.
 #define QUEUE_DESC_NUMBER 512
 
-/// Default to 4k hash entries
+/// The max flow key of the hash flow table.
 #define MAX_HASH_ENTRIES (1024*10)
 
+/// The max bulk amount to pull from queue.
 #define MAX_BULK_SIZE 32
 
 /// The main control block of SmartOffload.
