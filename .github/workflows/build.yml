@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v3
       - run: sudo apt-get install $DEPENDENCIES
       - run: sudo pip install $PIP_DEPENDENCIES
+      - run: alias cmake3 cmake
 
       - name: Cache DPDK
         id: cache-dpdk
@@ -57,8 +58,6 @@ jobs:
           sudo sh -c "ninja install > /dev/null"
           sudo sh -c "echo '/usr/local/lib' >> /etc/ld.so.conf"
           sudo ldconfig
-
-      - run: alias cmake cmake3
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
