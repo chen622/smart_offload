@@ -25,16 +25,16 @@ set_target_properties(zlog PROPERTIES
 
 ExternalProject_Add(RDARM
         PREFIX ${VENDOR_ROOT}/rdarm
-        URL ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rdarm-0f3250b0.zip
+        URL ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rdarm-e8b5c3fb.zip
         INSTALL_DIR ${VENDOR_BUILD}
         BUILD_BYPRODUCTS ${VENDOR_BUILD}/lib/librdarm.a
-        CONFIGURE_COMMAND cmake . -DCMAKE_INSTALL_PREFIX=${VENDOR_BUILD} -DCMAKE_BUILD_TYPE=Release -DNO_NAT_TEST=True -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${VENDOR_BUILD} -DCMAKE_BUILD_TYPE=Release -DNO_NAT_TEST=True -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         BUILD_IN_SOURCE 1
         )
 add_library(rdarm SHARED IMPORTED)
 add_dependencies(rdarm RDARM)
 set_target_properties(rdarm PROPERTIES
-        IMPORTED_LOCATION ${VENDOR_BUILD}/lib/libzlog.a
+        IMPORTED_LOCATION ${VENDOR_BUILD}/lib/librdarm.a
         INTERFACE_INCLUDE_DIRECTORIES ${VENDOR_BUILD}/include)
 
 include_directories(${VENDOR_BUILD}/include)
