@@ -36,37 +36,43 @@
 
 #ifdef EM_HASH_CRC
 #include <rte_hash_crc.h>
+#include <stdbool.h>
 #else
 #include <rte_jhash.h>
 #endif
 
 /// Used to allocate memory for dumping five tuple.
-#define PKT_INFO_MAX_LENGTH 50
+#define MAX_PKT_INFO_LENGTH 50
+
+/// Used to mask useless bits when extract packet info.
+#define ALL_32_BITS 0xffffffff
+#define BIT_8_TO_15 0x0000ff00
 
 typedef __m128i xmm_t;
 
-/// The structure used to extract from packet.
-union ipv4_five_tuple {
-  struct {
-    uint8_t pad0;
-    uint8_t proto;
-    uint16_t pad1;
-    uint32_t ip_src;
-    uint32_t ip_dst;
-    uint16_t port_src;
-    uint16_t port_dst;
-  };
-  xmm_t xmm;
-};
 
 struct smto_flow_key {
-  struct rdarm_five_tuple tuple;
+  union {
+    struct rdarm_five_tuple tuple;
+    struct {
+      uint8_t pad0;
+      uint8_t proto;
+      uint16_t pad1;
+      uint32_t ip_src;
+      uint32_t ip_dst;
+      uint16_t port_src;
+      uint16_t port_dst;
+    };
+    xmm_t xmm;
+  };
   struct rte_flow *flow;
   volatile uint64_t create_at; ///< Use the number of cycles of CPU as the time.
   volatile uint32_t flow_size; ///< Total size of packets in this flow.
   volatile uint32_t packet_amount; ///< Total amount of packets in a flow.
   bool is_offload; ///< Has created rte_flow to offload flow or not
 };
+
+
 
 
 /**

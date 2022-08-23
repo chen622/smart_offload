@@ -55,6 +55,12 @@
 /// The max bulk amount to pull from queue.
 #define MAX_BULK_SIZE 32
 
+/// The max amount of ring to transfer flow rules.
+#define MAX_RING_ENTRIES 1024
+
+/// The amount of packets to create a flow rule.
+#define PKT_AMOUNT_TO_OFFLOAD 5
+
 /// The main control block of SmartOffload.
 struct smto {
   volatile bool is_running;  ///< Whether the SmartOffload is running.
@@ -63,6 +69,7 @@ struct smto {
   uint16_t ports[2];
   struct rte_mempool *pkt_mbuf_pool;
   struct rte_hash *flow_hash_map;
+  struct rte_ring *flow_rules_ring;
 };
 
 

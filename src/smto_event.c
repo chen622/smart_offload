@@ -72,7 +72,7 @@ void delete_timeout_flows(void *params) {
   }
 
   struct smto_flow_key *flow_key = 0; ///< Used to iterate the timeout flows.
-  char flow_key_str[PKT_INFO_MAX_LENGTH] = {0}; ///< Used to save the flow key string.
+  char flow_key_str[MAX_PKT_INFO_LENGTH] = {0}; ///< Used to save the flow key string.
   for (int i = 0; i < timeout_quantity; ++i) {
     if (!flow_keys[i]) {
       zlog_error(smto_cb->logger, "get timeout flows failed: flow_key is NULL");
@@ -80,7 +80,7 @@ void delete_timeout_flows(void *params) {
     }
     flow_key = (struct smto_flow_key *) flow_keys[i];
     uint16_t queue_index = -1;
-    dump_pkt_info(&flow_key->tuple, queue_index, flow_key_str, PKT_INFO_MAX_LENGTH);
+    dump_pkt_info(&flow_key->tuple, queue_index, flow_key_str, MAX_PKT_INFO_LENGTH);
     if (flow_key->flow == NULL) {
       zlog_error(smto_cb->logger, "cannot get the rte_flow of packet(%s)", flow_key_str);
     } else {

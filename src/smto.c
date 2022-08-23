@@ -118,7 +118,7 @@ int init_smto(struct smto **smto) {
 #ifdef EM_HASH_CRC
       .hash_func = rte_hash_crc,
 #else
-    .hash_func = rte_jhash,
+      .hash_func = rte_jhash,
 #endif
       .hash_func_init_val = 622,
       .extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF
@@ -129,10 +129,26 @@ int init_smto(struct smto **smto) {
     goto err1;
   }
 
+  /// Create ring for flow rules
+  ssize_t ring_size = rte_ring_get_memsize(MAX_RING_ENTRIES);
+  struct rte_ring *ring = rte_calloc("flow_rule_ring", ring_size, 1, 0);
+  if (ring == NULL) {
+    zlog_error(smto_cb->logger, "failed to allocate memory for flow rule ring");
+    ret = SMTO_ERROR_HUGE_PAGE_MEMORY_ALLOCATION;
+    goto err2;
+  }
+  ret = rte_ring_init(ring, "flow_rule_ring", MAX_RING_ENTRIES, RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
+  if (ret != 0) {
+    zlog_error(smto_cb->logger, "failed to initialize flow rule ring: %s", rte_strerror(rte_errno));
+    ret = SMTO_ERROR_RING_CREATION;
+    rte_free(ring);
+    goto err2;
+  }
+
   /// Register age timeout event
   if (register_aged_event(smto_cb->ports[0]) != 0) {
     ret = SMTO_ERROR_EVENT_REGISTER;
-    goto err2;
+    goto err3;
   }
 
   smto_cb->is_running = true;
@@ -146,22 +162,24 @@ int init_smto(struct smto **smto) {
 
       if (rte_eal_remote_launch(process_loop, NULL, lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
-        goto err3;
+        goto err4;
       }
     } else { // The worker to create flow
       if (rte_eal_remote_launch(create_flow_loop, NULL, lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
-        goto err3;
+        goto err4;
       }
     }
 
   }
   return SMTO_SUCCESS;
 
-  err3:
+  err4:
   smto_cb->is_running = false;
   unregister_aged_event(smto_cb->ports[0]);
   rte_eal_mp_wait_lcore();
+  err3:
+  rte_ring_free(smto_cb->flow_rules_ring);
   err2:
   destroy_hash_map();
   err1:

@@ -24,8 +24,90 @@
 
 #include "smto.h"
 #include "internal/smto_worker.h"
+#include "internal/smto_flow_key.h"
 
 extern struct smto *smto_cb;
+
+static rte_xmm_t ipv4_mask = (rte_xmm_t) {
+    .u32 = {BIT_8_TO_15, ALL_32_BITS,
+            ALL_32_BITS, ALL_32_BITS}};
+
+/**
+ * Extract ipv4 5 tuple from the mbuf by SSE3 instruction.
+ *
+ * @param m0 The mbuf memory.
+ * @param mask0 The position which doesn't need.
+ * @param key The result.
+ */
+static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mask0, struct smto_flow_key *key) {
+  __m128i tmpdata0 = _mm_loadu_si128(
+      rte_pktmbuf_mtod_offset(m0, __m128i *,
+                              sizeof(struct rte_ether_hdr) +
+                                  offsetof(struct rte_ipv4_hdr, time_to_live)));
+
+  key->xmm = _mm_and_si128(tmpdata0, mask0);
+  key->tuple.proto = key->proto;
+}
+
+static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint16_t queue_index, uint16_t port_id) {
+  int ret = 0;
+  struct smto_flow_key *flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
+
+  if (pkt_mbuf->packet_type & RTE_PTYPE_L3_IPV4 && (pkt_mbuf->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
+    get_ipv4_5tuple(pkt_mbuf, ipv4_mask.x, flow_key);
+
+    char pkt_info[MAX_PKT_INFO_LENGTH];
+#ifndef RELEASE
+    dump_pkt_info(&flow_key->tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
+#endif
+    struct smto_flow_key *old_flow_key = 0;
+    ret = rte_hash_lookup_data(smto_cb->flow_hash_map, flow_key, (void **) &old_flow_key);
+    if (ret == -ENOENT) { ///< A flow that has not appeared
+      flow_key->create_at = rte_rdtsc();
+      flow_key->packet_amount++;
+      flow_key->flow_size += pkt_mbuf->pkt_len;
+      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, flow_key, flow_key);
+      if (ret != 0) {
+        zlog_error(smto_cb->logger, "cannot add pkt(%s) into flow table: %s", pkt_info, rte_strerror(ret));
+        return SMTO_ERROR_HASH_MAP_OPERATION;
+      } else {
+        zlog_debug(smto_cb->logger, "success add a flow(%s) to flow hash table", pkt_info);
+        return SMTO_SUCCESS;
+      }
+    } else if (ret >= 0) {
+      flow_key->packet_amount++;
+      flow_key->flow_size += pkt_mbuf->pkt_len;
+      zlog_debug(smto_cb->logger,
+                 "capture a packet which belong to a flow in flow table, which already have %u packets and total size is %u",
+                 flow_key->packet_amount,
+                 flow_key->flow_size);
+
+      /* Assume the flow can be offloaded now */
+      if (flow_key->packet_amount == PKT_AMOUNT_TO_OFFLOAD) {
+        struct rte_flow_error flow_error = {0};
+
+//        struct rte_flow *flow = create_offload_rte_flow(port_id, flow_hash_map, flow_map_key, zc,
+//                                                        &flow_error);
+//        zlog_debug(zc, "create and apply rte_flow use %f ns", GET_NANOSECOND(start_tsc));
+
+//        if (flow == NULL) {
+//          zlog_error(zc, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
+//          return -2;
+//        }
+//        zlog_info(zc, "a flow(%s) has been offload to network card", pkt_info);
+//        flow_key->is_offload = true;
+//        flow_key->flow = flow;
+//                zlog_debug(zc, "fifth packet processing delay: %f ns",
+//                           GET_NANOSECOND(start_tsc));
+      }
+      return SMTO_SUCCESS;
+    }
+    return ret;
+  } else {
+    zlog_error(smto_cb->logger, "Packet type is not supported.");
+    return SMTO_ERROR_UNSUPPORTED_PACKET_TYPE;
+  }
+}
 
 int process_loop(void *args) {
   unsigned lcore_id;
@@ -45,8 +127,8 @@ int process_loop(void *args) {
     nb_rx = rte_eth_rx_burst(port_id, queue_id, mbufs, MAX_BULK_SIZE);
     if (nb_rx) {
       for (packet_index = 0; packet_index < nb_rx; packet_index++) {
-        struct rte_mbuf *m = mbufs[packet_index];
-//        packet_processing(flow_hash_map, m, queue_id, port_id);
+        struct rte_mbuf *pkt_mbuf = mbufs[packet_index];
+        packet_processing(pkt_mbuf, queue_id, port_id);
       }
       nb_tx = rte_eth_tx_burst(port_id, queue_id,
                                mbufs, nb_rx);

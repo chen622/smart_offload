@@ -38,7 +38,10 @@ const char *smto_error_string(enum smto_error_code err_code) {
     case SMTO_ERROR_FLOW_QUERY: return "failed to query flow";
     case SMTO_ERROR_EVENT_REGISTER: return "failed to register event";
     case SMTO_ERROR_HASH_MAP_CREATION: return "failed to create hash map";
+    case SMTO_ERROR_HASH_MAP_OPERATION: return "failed to operate hash map";
     case SMTO_ERROR_WORKER_LAUNCH: return "failed to launch worker";
+    case SMTO_ERROR_RING_CREATION: return "failed to create ring";
+    case SMTO_ERROR_UNSUPPORTED_PACKET_TYPE: return "unsupported packet type";
     case SMTO_ERROR_UNKNOWN: return "unknown error";
     default: return "unsupported error code";
   }
