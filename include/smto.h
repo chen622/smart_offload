@@ -46,6 +46,9 @@
 /// The quantity of rx/tx queues.
 #define GENERAL_QUEUES_QUANTITY 1
 
+/// The index of hairpin queue.
+#define HAIRPIN_QUEUE_INDEX GENERAL_QUEUES_QUANTITY
+
 /// The packet descriptor of each queue.
 #define QUEUE_DESC_NUMBER 512
 
@@ -60,6 +63,9 @@
 
 /// The amount of packets to create a flow rule.
 #define PKT_AMOUNT_TO_OFFLOAD 5
+
+/// The seconds to timeout
+#define FLOW_TIMEOUT_SECOND 5
 
 /// The main control block of SmartOffload.
 struct smto {

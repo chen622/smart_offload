@@ -32,6 +32,15 @@
 #define MAX_REPEAT_TIMES 90 ///< waiting for 9s (90 * 100ms) in total
 
 /**
+ * Check the link status of port.
+ *
+ * @param port_id The port to be checked.
+ *
+ * @return 0 on success, other on error.
+ */
+int assert_link_status(uint16_t port_id);
+
+/**
  * Configure a network port and initialize the rx/tx queues.
  *
  * @param port_id The ID of port which will be configured.
@@ -39,6 +48,15 @@
  * @return 0 on success, other on error.
  */
 int init_port(uint16_t port_id);
+
+/**
+ * Setup the one-port mode hairpin.
+ *
+ * @param port_id The port to be setup.
+ *
+ * @return 0 on success, other on error.
+ */
+int setup_one_port_hairpin(int port_id);
 
 /**
  * Free the memory of flows in the hash map and free the flow hash map.

@@ -83,7 +83,21 @@ int init_smto(struct smto **smto) {
     smto_cb->mode = SINGLE_PORT_MODE;
     smto_cb->ports[0] = rte_eth_find_next_owned_by(0, RTE_ETH_DEV_NO_OWNER);
     init_port(smto_cb->ports[0]);
-//    setup_one_port_hairpin(port_id);
+    setup_one_port_hairpin(smto_cb->ports[0]);
+    /// Start the ports
+    ret = rte_eth_dev_start(smto_cb->ports[0]);
+    if (ret < 0) {
+      zlog_error(smto_cb->logger,
+                 "failed to start network device: err: %s, port=%u",
+                 rte_strerror(ret),
+                 smto_cb->ports[0]);
+      goto err;
+    }
+    /// Check the port status
+    if (assert_link_status(smto_cb->ports[0])) {
+      ret = SMTO_ERROR_DEVICE_START;
+      goto err;
+    }
   } else {
     zlog_error(smto_cb->logger, "dual port hairpin unsupported");
     goto err;
@@ -153,14 +167,14 @@ int init_smto(struct smto **smto) {
 
   smto_cb->is_running = true;
 
-  uint16_t lcore_id = 0;
+  uint16_t lcore_id, index = 0;
   struct worker_parameter *worker_params = malloc(sizeof(struct worker_parameter) * GENERAL_QUEUES_QUANTITY);
   RTE_LCORE_FOREACH_WORKER(lcore_id) {
-    if (lcore_id < GENERAL_QUEUES_QUANTITY) { // The worker to process packets
-      worker_params[lcore_id].port_id = smto_cb->ports[0];
-      worker_params[lcore_id].queue_id = lcore_id - 1; ///< The main core is 0, so the queue id should be lcore_id - 1
+    if (index < GENERAL_QUEUES_QUANTITY) { // The worker to process packets
+      worker_params[index].port_id = smto_cb->ports[0];
+      worker_params[index].queue_id = index;
 
-      if (rte_eal_remote_launch(process_loop, NULL, lcore_id) != 0) {
+      if (rte_eal_remote_launch(process_loop, &worker_params[index], lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
         goto err4;
       }
@@ -170,7 +184,7 @@ int init_smto(struct smto **smto) {
         goto err4;
       }
     }
-
+    index++;
   }
   return SMTO_SUCCESS;
 

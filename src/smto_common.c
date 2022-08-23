@@ -34,6 +34,7 @@ const char *smto_error_string(enum smto_error_code err_code) {
     case SMTO_ERROR_DEVICE_CONFIGURE: return "device configure error";
     case SMTO_ERROR_QUEUE_SETUP: return "failed to setup queue";
     case SMTO_ERROR_DEVICE_START: return "failed to start device";
+    case SMTO_ERROR_HAIRPIN_SETUP: return "failed to setup hairpin queue";
     case SMTO_ERROR_FLOW_CREATE: return "failed to create flow";
     case SMTO_ERROR_FLOW_QUERY: return "failed to query flow";
     case SMTO_ERROR_EVENT_REGISTER: return "failed to register event";

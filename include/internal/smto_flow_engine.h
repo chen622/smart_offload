@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include "smto.h"
+#include "internal/smto_flow_key.h"
 
 /**
  * Create a default jump rule which make pkts jump from group 0 to 1.
@@ -51,6 +52,20 @@ struct rte_flow *create_default_jump_flow(uint16_t port_id);
 *      - NULL: Some error occur when create a rte_flow.
 */
 struct rte_flow *create_default_rss_flow(uint16_t port_id);
+
+/**
+ * Create a offload flow which match by a ipv4 5-tuple.
+ *
+ * @param port_id The port which the flow will be affect.
+ * @param flow_key The ipv4 5-tuple which used to match packet.
+ * @param error The error return by creating rte_flow.
+ * @return
+*      - not NULL: Create success.
+*      - NULL: Some error occur when create a rte_flow.
+ */
+struct rte_flow *create_general_offload_flow(uint16_t port_id,
+                                             struct smto_flow_key *flow_key,
+                                             struct rte_flow_error *error);
 
 /**
  * A worker to pull rules from packet workers and create rte_flow.

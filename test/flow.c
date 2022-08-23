@@ -22,16 +22,15 @@
  * SOFTWARE.
 */
 #include <sys/time.h>
-#include "v1/flow_management.h"
 
 
-static void signal_handler(int signum) {
-    if (signum == SIGINT || signum == SIGTERM) {
-        dzlog_info("Signal %d received, preparing to exit...",
-                   signum);
-        force_quit = true;
-    }
-}
+//static void signal_handler(int signum) {
+//    if (signum == SIGINT || signum == SIGTERM) {
+//        dzlog_info("Signal %d received, preparing to exit...",
+//                   signum);
+//        force_quit = true;
+//    }
+//}
 
 
 int main(int argc, char **argv) {
@@ -46,10 +45,10 @@ int main(int argc, char **argv) {
         smto_exit(EXIT_FAILURE, "invalid EAL arguments");
     }
 
-    /* Listen to the shutdown event */
-    force_quit = false;
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
+//    /* Listen to the shutdown event */
+//    force_quit = false;
+//    signal(SIGINT, signal_handler);
+//    signal(SIGTERM, signal_handler);
 
     /* Initialize the memory pool of dpdk */
     struct rte_mempool *mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NUM_MBUFS, CACHE_SIZE, 0,

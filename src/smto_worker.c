@@ -25,6 +25,7 @@
 #include "smto.h"
 #include "internal/smto_worker.h"
 #include "internal/smto_flow_key.h"
+#include "internal/smto_flow_engine.h"
 
 extern struct smto *smto_cb;
 
@@ -52,7 +53,7 @@ static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mas
 static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint16_t queue_index, uint16_t port_id) {
   int ret = 0;
   struct smto_flow_key *flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
-
+//  zlog_debug(smto_cb->logger, "flow_key: %u", pkt_mbuf->packet_type);
   if (pkt_mbuf->packet_type & RTE_PTYPE_L3_IPV4 && (pkt_mbuf->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
     get_ipv4_5tuple(pkt_mbuf, ipv4_mask.x, flow_key);
 
@@ -61,12 +62,12 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
     dump_pkt_info(&flow_key->tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
 #endif
     struct smto_flow_key *old_flow_key = 0;
-    ret = rte_hash_lookup_data(smto_cb->flow_hash_map, flow_key, (void **) &old_flow_key);
+    ret = rte_hash_lookup_data(smto_cb->flow_hash_map, &flow_key->tuple, (void **) &old_flow_key);
     if (ret == -ENOENT) { ///< A flow that has not appeared
       flow_key->create_at = rte_rdtsc();
       flow_key->packet_amount++;
       flow_key->flow_size += pkt_mbuf->pkt_len;
-      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, flow_key, flow_key);
+      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, &flow_key->tuple, flow_key);
       if (ret != 0) {
         zlog_error(smto_cb->logger, "cannot add pkt(%s) into flow table: %s", pkt_info, rte_strerror(ret));
         return SMTO_ERROR_HASH_MAP_OPERATION;
@@ -75,6 +76,8 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
         return SMTO_SUCCESS;
       }
     } else if (ret >= 0) {
+      rte_free(flow_key);
+      flow_key = old_flow_key;
       flow_key->packet_amount++;
       flow_key->flow_size += pkt_mbuf->pkt_len;
       zlog_debug(smto_cb->logger,
@@ -86,17 +89,15 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
       if (flow_key->packet_amount == PKT_AMOUNT_TO_OFFLOAD) {
         struct rte_flow_error flow_error = {0};
 
-//        struct rte_flow *flow = create_offload_rte_flow(port_id, flow_hash_map, flow_map_key, zc,
-//                                                        &flow_error);
-//        zlog_debug(zc, "create and apply rte_flow use %f ns", GET_NANOSECOND(start_tsc));
+        struct rte_flow *flow = create_general_offload_flow(port_id, flow_key, &flow_error);
 
-//        if (flow == NULL) {
-//          zlog_error(zc, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
-//          return -2;
-//        }
-//        zlog_info(zc, "a flow(%s) has been offload to network card", pkt_info);
-//        flow_key->is_offload = true;
-//        flow_key->flow = flow;
+        if (flow == NULL) {
+          zlog_error(smto_cb->logger, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
+          return SMTO_ERROR_FLOW_CREATE;
+        }
+        zlog_info(smto_cb->logger, "a flow(%s) has been offload to network card", pkt_info);
+        flow_key->is_offload = true;
+        flow_key->flow = flow;
 //                zlog_debug(zc, "fifth packet processing delay: %f ns",
 //                           GET_NANOSECOND(start_tsc));
       }
