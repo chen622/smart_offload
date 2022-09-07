@@ -1,4 +1,4 @@
-set(SRC smto.c smto_common.c smto_setup.c smto_flow_engine.c smto_flow_key.c smto_event.c smto_worker.c)
+set(SRC smto.c smto_common.c smto_setup.c smto_flow_engine.c smto_flow_key.c smto_event.c smto_worker.c smto_utils.c)
 
 add_library(smart_offload_lib ${SRC})
 add_dependencies(smart_offload_lib rdarm)

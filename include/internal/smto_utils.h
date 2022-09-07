@@ -22,41 +22,25 @@
  * SOFTWARE.
 */
 
-#ifndef SMART_OFFLOAD_INCLUDE_SMTO_COMMON_H_
-#define SMART_OFFLOAD_INCLUDE_SMTO_COMMON_H_
+#ifndef SMART_OFFLOAD_SRC_SMTO_UTILS_H_
+#define SMART_OFFLOAD_SRC_SMTO_UTILS_H_
+#include <zlog.h>
+#include <pthread.h>
+#include <memory.h>
+#include <stdlib.h>
+#include <stdint.h>
 
-#define GET_NANOSECOND(start_time) (rte_rdtsc() - start_time) / (double) rte_get_tsc_hz() * 1000 * 1000 * 1000
+#define TURN 2
 
-
-enum smto_error_code {
-  SMTO_SUCCESS = 0,
-  SMTO_ERROR_MEMORY_ALLOCATION,
-  SMTO_ERROR_HUGE_PAGE_MEMORY_ALLOCATION,
-  SMTO_ERROR_NO_ENOUGH_WORKER,
-  SMTO_ERROR_NO_AVAILABLE_PORTS,
-  SMTO_ERROR_DEVICE_CONFIGURE,
-  SMTO_ERROR_QUEUE_SETUP,
-  SMTO_ERROR_HAIRPIN_SETUP,
-  SMTO_ERROR_DEVICE_START,
-  SMTO_ERROR_FLOW_CREATE,
-  SMTO_ERROR_FLOW_QUERY,
-  SMTO_ERROR_EVENT_REGISTER,
-  SMTO_ERROR_HASH_MAP_CREATION,
-  SMTO_ERROR_HASH_MAP_OPERATION,
-  SMTO_ERROR_WORKER_LAUNCH,
-  SMTO_ERROR_RING_CREATION,
-  SMTO_ERROR_UNSUPPORTED_PACKET_TYPE,
-  SMTO_ERROR_UNKNOWN = -100,
-};
-
-enum smto_mode {
-  SINGLE_PORT_MODE = 0,
-  DOUBLE_PORT_MODE
-};
 
 /**
- * @brief Get a readable message.
+ * @brief Make statistics of time and print average, 50%, 90%, 99% and max value.
+ *
+ * @param logger The logger to print result.
+ * @param time_array The array of time.
+ * @param size The size of array.
+ * @param prefix_name The prefix name of output result.
  */
-const char *smto_error_string(enum smto_error_code error);
+void time_stat(zlog_category_t *logger, uint64_t time_array[], int size, char *prefix_name);
 
-#endif //SMART_OFFLOAD_INCLUDE_SMTO_COMMON_H_
+#endif //SMART_OFFLOAD_SRC_SMTO_UTILS_H_

@@ -145,17 +145,17 @@ int init_smto(struct smto **smto) {
 
   /// Create ring for flow rules
   ssize_t ring_size = rte_ring_get_memsize(MAX_RING_ENTRIES);
-  struct rte_ring *ring = rte_calloc("flow_rule_ring", ring_size, 1, 0);
-  if (ring == NULL) {
+  smto_cb->flow_rules_ring = rte_calloc("flow_rule_ring", ring_size, 1, 0);
+  if (smto_cb->flow_rules_ring == NULL) {
     zlog_error(smto_cb->logger, "failed to allocate memory for flow rule ring");
     ret = SMTO_ERROR_HUGE_PAGE_MEMORY_ALLOCATION;
     goto err2;
   }
-  ret = rte_ring_init(ring, "flow_rule_ring", MAX_RING_ENTRIES, RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
+  ret = rte_ring_init(smto_cb->flow_rules_ring, "flow_rule_ring", MAX_RING_ENTRIES, RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
   if (ret != 0) {
     zlog_error(smto_cb->logger, "failed to initialize flow rule ring: %s", rte_strerror(rte_errno));
     ret = SMTO_ERROR_RING_CREATION;
-    rte_free(ring);
+    rte_free(smto_cb->flow_rules_ring);
     goto err2;
   }
 

@@ -26,8 +26,14 @@
 #include "internal/smto_worker.h"
 #include "internal/smto_flow_key.h"
 #include "internal/smto_flow_engine.h"
+#include "internal/smto_utils.h"
 
 extern struct smto *smto_cb;
+
+#define TIME_COUNT 10000
+
+__thread uint64_t used_times[TIME_COUNT];
+__thread uint32_t used_times_index = 0;
 
 static rte_xmm_t ipv4_mask = (rte_xmm_t) {
     .u32 = {BIT_8_TO_15, ALL_32_BITS,
@@ -61,6 +67,7 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
 #ifndef RELEASE
     dump_pkt_info(&flow_key->tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
 #endif
+    uint64_t start_tsc = rte_rdtsc();
     struct smto_flow_key *old_flow_key = 0;
     ret = rte_hash_lookup_data(smto_cb->flow_hash_map, &flow_key->tuple, (void **) &old_flow_key);
     if (ret == -ENOENT) { ///< A flow that has not appeared
@@ -87,19 +94,23 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
 
       /* Assume the flow can be offloaded now */
       if (flow_key->packet_amount == PKT_AMOUNT_TO_OFFLOAD) {
+
+        rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
+        if (used_times_index < TIME_COUNT) {
+          used_times[used_times_index++] = GET_NANOSECOND(start_tsc);
+        } else {
+          time_stat(smto_cb->logger, used_times, TIME_COUNT, "offload_flow");
+        }
         struct rte_flow_error flow_error = {0};
-
         struct rte_flow *flow = create_general_offload_flow(port_id, flow_key, &flow_error);
-
         if (flow == NULL) {
           zlog_error(smto_cb->logger, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
           return SMTO_ERROR_FLOW_CREATE;
         }
-        zlog_info(smto_cb->logger, "a flow(%s) has been offload to network card", pkt_info);
         flow_key->is_offload = true;
         flow_key->flow = flow;
-//                zlog_debug(zc, "fifth packet processing delay: %f ns",
-//                           GET_NANOSECOND(start_tsc));
+
+        zlog_info(smto_cb->logger, "a flow(%s)(#%d) has been offload to network card", pkt_info, used_times_index);
       }
       return SMTO_SUCCESS;
     }

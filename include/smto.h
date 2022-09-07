@@ -53,19 +53,19 @@
 #define QUEUE_DESC_NUMBER 512
 
 /// The max flow key of the hash flow table.
-#define MAX_HASH_ENTRIES (1024*10)
+#define MAX_HASH_ENTRIES (1024*100)
 
 /// The max bulk amount to pull from queue.
 #define MAX_BULK_SIZE 32
 
 /// The max amount of ring to transfer flow rules.
-#define MAX_RING_ENTRIES 1024
+#define MAX_RING_ENTRIES 1024*16
 
 /// The amount of packets to create a flow rule.
-#define PKT_AMOUNT_TO_OFFLOAD 5
+#define PKT_AMOUNT_TO_OFFLOAD 2
 
 /// The seconds to timeout
-#define FLOW_TIMEOUT_SECOND 5
+#define FLOW_TIMEOUT_SECOND 10
 
 /// The main control block of SmartOffload.
 struct smto {
