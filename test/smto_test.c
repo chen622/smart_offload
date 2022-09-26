@@ -1,12 +1,6 @@
-#include <zlog.h>
-#include <rte_eal.h>
-#include <signal.h>
-
-#include "smto.h"
-
 /*
  * MIT License
- * 
+ *
  * Copyright (c) 2022 Chenming C (ccm@ccm.ink)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -15,10 +9,10 @@
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,8 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
+#include <zlog.h>
+#include <rte_eal.h>
+#include <signal.h>
 
-static struct smto *smto_cb;
+#include "smto.h"
+
+
 
 bool is_running = true;
 
@@ -56,7 +55,7 @@ int main(int argc, char **argv) {
     ret = -2;
     goto rte_err;
   }
-
+  struct smto *smto_cb;
   ret = init_smto(&smto_cb);
   if (ret != SMTO_SUCCESS) {
     zlog_error(logger, "init smto failed: %s\n", smto_error_string(ret));

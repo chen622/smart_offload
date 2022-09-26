@@ -50,10 +50,9 @@
 
 typedef __m128i xmm_t;
 
-
 struct smto_flow_key {
   union {
-    struct rdarm_five_tuple tuple;
+    struct rdarm_five_tuple tuple; ///< The tuple to identify a flow.
     struct {
       uint8_t pad0;
       uint8_t proto;
@@ -62,13 +61,14 @@ struct smto_flow_key {
       uint32_t ip_dst;
       uint16_t port_src;
       uint16_t port_dst;
-    };
+    }; ///< The struct to load tuple from mbuf.
     xmm_t xmm;
   };
   struct rte_flow *flow;
   volatile uint64_t create_at; ///< Use the number of cycles of CPU as the time.
   volatile uint32_t flow_size; ///< Total size of packets in this flow.
   volatile uint32_t packet_amount; ///< Total amount of packets in a flow.
+  uint16_t new_port;
   bool is_offload; ///< Has created rte_flow to offload flow or not
 };
 
@@ -83,7 +83,6 @@ struct smto_flow_key {
  * @param result The result string.
  * @param result_size The max length of result string.
  */
-void dump_pkt_info(struct rdarm_five_tuple *key, uint16_t qi, char *result, int result_length);
-
+    void dump_pkt_info(struct rdarm_five_tuple *key, uint16_t qi, char *result, int result_length);
 
 #endif //SMART_OFFLOAD_INCLUDE_INTERNAL_SMTO_FLOW_KEY_H_

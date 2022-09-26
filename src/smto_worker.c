@@ -30,10 +30,11 @@
 
 extern struct smto *smto_cb;
 
-#define TIME_COUNT 10000
+//#define TIME_COUNT 100000
 
-__thread uint64_t used_times[TIME_COUNT];
-__thread uint32_t used_times_index = 0;
+//__thread uint64_t used_times[TIME_COUNT];
+//__thread uint32_t used_times_index = 0;
+__thread uint64_t flow_count = 0;
 
 static rte_xmm_t ipv4_mask = (rte_xmm_t) {
     .u32 = {BIT_8_TO_15, ALL_32_BITS,
@@ -58,33 +59,52 @@ static __rte_always_inline void get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mas
 
 static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint16_t queue_index, uint16_t port_id) {
   int ret = 0;
-  struct smto_flow_key *flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
+  struct smto_flow_key tuple = {0};
 //  zlog_debug(smto_cb->logger, "flow_key: %u", pkt_mbuf->packet_type);
   if (pkt_mbuf->packet_type & RTE_PTYPE_L3_IPV4 && (pkt_mbuf->packet_type & (RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP))) {
-    get_ipv4_5tuple(pkt_mbuf, ipv4_mask.x, flow_key);
+    get_ipv4_5tuple(pkt_mbuf, ipv4_mask.x, &tuple);
 
     char pkt_info[MAX_PKT_INFO_LENGTH];
 #ifndef RELEASE
-    dump_pkt_info(&flow_key->tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
+    dump_pkt_info(&tuple.tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
 #endif
-    uint64_t start_tsc = rte_rdtsc();
-    struct smto_flow_key *old_flow_key = 0;
-    ret = rte_hash_lookup_data(smto_cb->flow_hash_map, &flow_key->tuple, (void **) &old_flow_key);
+    struct smto_flow_key *flow_key = 0;
+    ret = rte_hash_lookup_data(smto_cb->flow_hash_map, &tuple.tuple, (void **) &flow_key);
+
     if (ret == -ENOENT) { ///< A flow that has not appeared
+      // Out-direction flow
+      flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
+      rte_memcpy(&flow_key->tuple, &tuple, sizeof(tuple));
       flow_key->create_at = rte_rdtsc();
       flow_key->packet_amount++;
       flow_key->flow_size += pkt_mbuf->pkt_len;
+      void *port_object = 0;
+      rte_ring_dequeue(smto_cb->port_pool, &port_object);
+      flow_key->new_port = (uint16_t) (uintptr_t) port_object;
       ret = rte_hash_add_key_data(smto_cb->flow_hash_map, &flow_key->tuple, flow_key);
       if (ret != 0) {
         zlog_error(smto_cb->logger, "cannot add pkt(%s) into flow table: %s", pkt_info, rte_strerror(ret));
         return SMTO_ERROR_HASH_MAP_OPERATION;
       } else {
         zlog_debug(smto_cb->logger, "success add a flow(%s) to flow hash table", pkt_info);
-        return SMTO_SUCCESS;
       }
+
+      // In-direction flow
+
+      rdarm_five_tuple in_tuple = flow_key->tuple;
+      in_tuple.ip1 = flow_key->tuple.ip2;
+      in_tuple.port1 = flow_key->tuple.port2;
+      in_tuple.ip2 = rte_cpu_to_be_32(SRC_IP);
+      in_tuple.port2 = rte_cpu_to_be_16(flow_key->new_port);
+      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, &in_tuple, flow_key);
+      if (ret != 0) {
+        zlog_error(smto_cb->logger, "cannot add pkt(%s) into flow table: %s", pkt_info, rte_strerror(ret));
+        return SMTO_ERROR_HASH_MAP_OPERATION;
+      } else {
+        zlog_debug(smto_cb->logger, "success add a flow(%s) to flow hash table", pkt_info);
+      }
+
     } else if (ret >= 0) {
-      rte_free(flow_key);
-      flow_key = old_flow_key;
       flow_key->packet_amount++;
       flow_key->flow_size += pkt_mbuf->pkt_len;
       zlog_debug(smto_cb->logger,
@@ -93,14 +113,10 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
                  flow_key->flow_size);
 
       /* Assume the flow can be offloaded now */
-      if (flow_key->packet_amount == PKT_AMOUNT_TO_OFFLOAD) {
+      if (PKT_AMOUNT_TO_OFFLOAD != -1 && flow_key->packet_amount >= PKT_AMOUNT_TO_OFFLOAD && !flow_key->is_offload) {
 
         rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
-        if (used_times_index < TIME_COUNT) {
-          used_times[used_times_index++] = GET_NANOSECOND(start_tsc);
-        } else {
-          time_stat(smto_cb->logger, used_times, TIME_COUNT, "offload_flow");
-        }
+
         struct rte_flow_error flow_error = {0};
         struct rte_flow *flow = create_general_offload_flow(port_id, flow_key, &flow_error);
         if (flow == NULL) {
@@ -109,12 +125,26 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
         }
         flow_key->is_offload = true;
         flow_key->flow = flow;
-
-        zlog_info(smto_cb->logger, "a flow(%s)(#%d) has been offload to network card", pkt_info, used_times_index);
+        if (flow_count % 10000 == 0) {
+          zlog_info(smto_cb->logger, "a flow(%s)((%lu)) has been offload to network card", pkt_info, flow_count);
+        }
+        ++flow_count;
       }
       return SMTO_SUCCESS;
+    } else {
+      zlog_error(smto_cb->logger, "cannot find pkt(%s) in flow table: %s", pkt_info, rte_strerror(ret));
+      return SMTO_ERROR_HASH_MAP_OPERATION;
     }
-    return ret;
+
+    struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(pkt_mbuf, struct rte_ether_hdr *);
+    struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *) (eth_hdr + 1);
+    struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *) (ipv4_hdr + 1);
+    ipv4_hdr->src_addr = rte_cpu_to_be_32(SRC_IP);
+    tcp_hdr->src_port = rte_cpu_to_be_16(flow_key->new_port);
+    pkt_mbuf->l3_len = sizeof(struct rte_ipv4_hdr);
+    pkt_mbuf->l4_len = sizeof(struct rte_tcp_hdr);
+    pkt_mbuf->ol_flags = RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM;
+    return SMTO_SUCCESS;
   } else {
     zlog_error(smto_cb->logger, "Packet type is not supported.");
     return SMTO_ERROR_UNSUPPORTED_PACKET_TYPE;
@@ -140,10 +170,19 @@ int process_loop(void *args) {
     if (nb_rx) {
       for (packet_index = 0; packet_index < nb_rx; packet_index++) {
         struct rte_mbuf *pkt_mbuf = mbufs[packet_index];
+//        uint64_t start_tsc = rte_rdtsc();
         packet_processing(pkt_mbuf, queue_id, port_id);
+//        if (used_times_index < TIME_COUNT) {
+//          used_times[used_times_index++] = GET_NANOSECOND(start_tsc);
+//        } else {
+//          time_stat(smto_cb->logger, used_times, TIME_COUNT, "offload_flow");
+//          used_times_index = 0;
+//        }
       }
+//      rte_delay_us_sleep(20);
       nb_tx = rte_eth_tx_burst(port_id, queue_id,
                                mbufs, nb_rx);
+//      zlog_info(smto_cb->logger, "worker #%u for queue #%u: %d", lcore_id, queue_id, nb_rx);
     }
     /* Free any unsent packets. */
     if (unlikely(nb_tx < nb_rx)) {

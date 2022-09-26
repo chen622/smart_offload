@@ -104,6 +104,7 @@ void delete_timeout_flows(void *params) {
       if (ret) {
         zlog_error(smto_cb->logger, "cannot remove a offload rte_flow from nic: %s", flow_error.message);
       } else {
+        flow_key->is_offload = false;
         zlog_info(smto_cb->logger, "flow(%s) has been delete because timeout", flow_key_str);
       }
     }

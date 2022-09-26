@@ -38,7 +38,7 @@
 #include "internal/smto_worker.h"
 
 /// The number of elements in the mbuf pool. The optimum size is (2^q - 1). Each mbuf is 2176 bytes.
-#define NUM_MBUFS 65535
+#define NUM_MBUFS 1048575
 
 /// Size of the per-core object cache. Must lower or equal to RTE_MEMPOOL_CACHE_MAX_SIZE and n / 1.5
 #define CACHE_SIZE 512
@@ -50,10 +50,10 @@
 #define HAIRPIN_QUEUE_INDEX GENERAL_QUEUES_QUANTITY
 
 /// The packet descriptor of each queue.
-#define QUEUE_DESC_NUMBER 512
+#define QUEUE_DESC_NUMBER 128
 
 /// The max flow key of the hash flow table.
-#define MAX_HASH_ENTRIES (1024*100)
+#define MAX_HASH_ENTRIES (1024 * 1024 * 32)
 
 /// The max bulk amount to pull from queue.
 #define MAX_BULK_SIZE 32
@@ -62,10 +62,12 @@
 #define MAX_RING_ENTRIES 1024*16
 
 /// The amount of packets to create a flow rule.
-#define PKT_AMOUNT_TO_OFFLOAD 2
+#define PKT_AMOUNT_TO_OFFLOAD 5
 
 /// The seconds to timeout
-#define FLOW_TIMEOUT_SECOND 10
+#define FLOW_TIMEOUT_SECOND 200
+
+extern const uint32_t SRC_IP;
 
 /// The main control block of SmartOffload.
 struct smto {
@@ -76,6 +78,7 @@ struct smto {
   struct rte_mempool *pkt_mbuf_pool;
   struct rte_hash *flow_hash_map;
   struct rte_ring *flow_rules_ring;
+  struct rte_ring *port_pool;
 };
 
 

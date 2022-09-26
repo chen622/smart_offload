@@ -29,6 +29,8 @@
 #include "internal/smto_event.h"
 #include "internal/smto_flow_key.h"
 
+const uint32_t SRC_IP = RTE_IPV4(100, 1000, 1, 1);
+
 /// The global control block of SmartOffload.
 struct smto *smto_cb = 0;
 
@@ -159,10 +161,34 @@ int init_smto(struct smto **smto) {
     goto err2;
   }
 
+  /// Create ring for port pool
+  ring_size = rte_ring_get_memsize(MAX_HASH_ENTRIES);
+  smto_cb->port_pool = rte_calloc("port_pool", ring_size, 1, 0);
+  if (smto_cb->port_pool == NULL) {
+    zlog_error(smto_cb->logger, "failed to allocate memory for port pool ring");
+    ret = SMTO_ERROR_HUGE_PAGE_MEMORY_ALLOCATION;
+    goto err3;
+  }
+  ret = rte_ring_init(smto_cb->port_pool, "port_pool", MAX_HASH_ENTRIES, RING_F_MP_RTS_ENQ | RING_F_SC_DEQ);
+  if (ret != 0) {
+    zlog_error(smto_cb->logger, "failed to initialize port pool ring: %s", rte_strerror(rte_errno));
+    ret = SMTO_ERROR_RING_CREATION;
+    rte_free(smto_cb->port_pool);
+    goto err3;
+  }
+  for (int i = 1; i < MAX_HASH_ENTRIES; ++i) {
+    ret = rte_ring_enqueue(smto_cb->port_pool, (void *) (uintptr_t) i);
+    if (ret != 0) {
+      zlog_error(smto_cb->logger, "failed to enqueue port pool ring: %s", rte_strerror(rte_errno));
+      ret = SMTO_ERROR_RING_CREATION;
+      goto err4;
+    }
+  }
+
   /// Register age timeout event
   if (register_aged_event(smto_cb->ports[0]) != 0) {
     ret = SMTO_ERROR_EVENT_REGISTER;
-    goto err3;
+    goto err4;
   }
 
   smto_cb->is_running = true;
@@ -176,24 +202,28 @@ int init_smto(struct smto **smto) {
 
       if (rte_eal_remote_launch(process_loop, &worker_params[index], lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
-        goto err4;
+        goto err5;
       }
-    } else { // The worker to create flow
+    } else if (index == GENERAL_QUEUES_QUANTITY) { // The worker to create flow
       if (rte_eal_remote_launch(create_flow_loop, NULL, lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
-        goto err4;
+        goto err5;
       }
+    } else {
+      zlog_info(smto_cb->logger, "unused worker: %d", lcore_id);
     }
     index++;
   }
   return SMTO_SUCCESS;
 
-  err4:
+  err5:
   smto_cb->is_running = false;
   unregister_aged_event(smto_cb->ports[0]);
   rte_eal_mp_wait_lcore();
+  err4:
+  rte_free(smto_cb->port_pool);
   err3:
-  rte_ring_free(smto_cb->flow_rules_ring);
+  rte_free(smto_cb->flow_rules_ring);
   err2:
   destroy_hash_map();
   err1:

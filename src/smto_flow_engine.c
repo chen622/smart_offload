@@ -164,7 +164,7 @@ struct rte_flow *create_general_offload_flow(uint16_t port_id,
       .hdr = {
           .src_addr = flow_key->tuple.ip1,
           .dst_addr = flow_key->tuple.ip2,
-          .next_proto_id = flow_key->proto
+          .next_proto_id = flow_key->tuple.proto
       }
   };
   /// The mask to match ipv4 header
@@ -193,7 +193,7 @@ struct rte_flow *create_general_offload_flow(uint16_t port_id,
       }
 
   };
-  if (flow_key->proto == IPPROTO_TCP) {
+  if (flow_key->tuple.proto == IPPROTO_TCP) {
     pattern[L4].type = RTE_FLOW_ITEM_TYPE_TCP;
     struct rte_flow_item_tcp tcp_pattern = {
         .hdr = {
@@ -202,7 +202,7 @@ struct rte_flow *create_general_offload_flow(uint16_t port_id,
         }
     };
     pattern[L4].spec = &tcp_pattern;
-  } else if (flow_key->proto == IPPROTO_UDP) {
+  } else if (flow_key->tuple.proto == IPPROTO_UDP) {
     pattern[L4].type = RTE_FLOW_ITEM_TYPE_UDP;
     struct rte_flow_item_udp udp_pattern = {
         .hdr = {
