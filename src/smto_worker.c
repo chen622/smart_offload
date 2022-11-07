@@ -30,11 +30,11 @@
 
 extern struct smto *smto_cb;
 
-//#define TIME_COUNT 100000
+#define TIME_COUNT 10000
 
-//__thread uint64_t used_times[TIME_COUNT];
-//__thread uint32_t used_times_index = 0;
-__thread uint64_t flow_count = 0;
+//__thread uint64_t queue_used_times[TIME_COUNT];
+//__thread uint64_t flow_used_times[TIME_COUNT];
+//__thread int used_times_index = 0;
 
 static rte_xmm_t ipv4_mask = (rte_xmm_t) {
     .u32 = {BIT_8_TO_15, ALL_32_BITS,
@@ -114,21 +114,35 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
 
       /* Assume the flow can be offloaded now */
       if (PKT_AMOUNT_TO_OFFLOAD != -1 && flow_key->packet_amount >= PKT_AMOUNT_TO_OFFLOAD && !flow_key->is_offload) {
+//        uint64_t start_time = rte_rdtsc();
+//        rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
+//        queue_used_times[used_times_index] = GET_NANOSECOND(start_time);
 
-        rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
-
+//        start_time = rte_rdtsc();
         struct rte_flow_error flow_error = {0};
         struct rte_flow *flow = create_general_offload_flow(port_id, flow_key, &flow_error);
         if (flow == NULL) {
           zlog_error(smto_cb->logger, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
           return SMTO_ERROR_FLOW_CREATE;
         }
+//        flow_used_times[used_times_index++] = GET_NANOSECOND(start_time);
+//        if (used_times_index % 10000 == 0) {
+//          zlog_info(smto_cb->logger, "create %u flows", used_times_index);
+//        }
+//        if (used_times_index >= TIME_COUNT) {
+//          zlog_category_t *logger = zlog_get_category("benchmark");
+//          for (int i = 0; i < TIME_COUNT; ++i) {
+//            zlog_info(logger, "%ld", queue_used_times[i]);
+//          }
+//          zlog_info(logger, "---------------------------------");
+//          for (int i = 0; i < TIME_COUNT; ++i) {
+//            zlog_info(logger, "%ld", flow_used_times[i]);
+//          }
+//          smto_cb->is_running = false;
+//          return SMTO_SUCCESS;
+//        }
         flow_key->is_offload = true;
         flow_key->flow = flow;
-        if (flow_count % 10000 == 0) {
-          zlog_info(smto_cb->logger, "a flow(%s)((%lu)) has been offload to network card", pkt_info, flow_count);
-        }
-        ++flow_count;
       }
       return SMTO_SUCCESS;
     } else {
