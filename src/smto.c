@@ -34,6 +34,9 @@ const uint32_t SRC_IP = RTE_IPV4(100, 1000, 1, 1);
 /// The global control block of SmartOffload.
 struct smto *smto_cb = 0;
 
+/// The parameters for each worker threads.
+struct worker_parameter *worker_params;
+
 int init_smto(struct smto **smto) {
   int ret = 0;
   *smto = calloc(sizeof(struct smto), 1);
@@ -48,12 +51,12 @@ int init_smto(struct smto **smto) {
   uint32_t worker_quantity = rte_lcore_count();
   if (worker_quantity > GENERAL_QUEUES_QUANTITY + 2) {
     zlog_warn(smto_cb->logger,
-              "worker quantity(%u) greater than required(queue quantity(%u) + main(1)), the remaining worker will remain idle",
+              "worker quantity(%u) greater than required(queue quantity(%u) + flow_engine(1) + main(1)), the remaining worker will remain idle",
               worker_quantity,
               GENERAL_QUEUES_QUANTITY);
   } else if (worker_quantity < GENERAL_QUEUES_QUANTITY + 2) {
     zlog_error(smto_cb->logger,
-               "worker quantity(%u) should be greater than or equal to required(queue quantity(%u) + main(1))",
+               "worker quantity(%u) should be greater than or equal to required(queue quantity(%u) + flow_engine(1) + main(1))",
                worker_quantity,
                GENERAL_QUEUES_QUANTITY);
     ret = SMTO_ERROR_NO_ENOUGH_WORKER;
@@ -145,7 +148,7 @@ int init_smto(struct smto **smto) {
     goto err1;
   }
 
-  /// Create ring for flow rules
+  /// Create ring for flow rules from worker to flow engine
   ssize_t ring_size = rte_ring_get_memsize(MAX_RING_ENTRIES);
   smto_cb->flow_rules_ring = rte_calloc("flow_rule_ring", ring_size, 1, 0);
   if (smto_cb->flow_rules_ring == NULL) {
@@ -194,7 +197,7 @@ int init_smto(struct smto **smto) {
   smto_cb->is_running = true;
 
   uint16_t lcore_id, index = 0;
-  struct worker_parameter *worker_params = malloc(sizeof(struct worker_parameter) * GENERAL_QUEUES_QUANTITY);
+  worker_params = calloc(sizeof(struct worker_parameter), GENERAL_QUEUES_QUANTITY);
   RTE_LCORE_FOREACH_WORKER(lcore_id) {
     if (index < GENERAL_QUEUES_QUANTITY) { // The worker to process packets
       worker_params[index].port_id = smto_cb->ports[0];
@@ -217,6 +220,7 @@ int init_smto(struct smto **smto) {
   return SMTO_SUCCESS;
 
   err5:
+  free(worker_params);
   smto_cb->is_running = false;
   unregister_aged_event(smto_cb->ports[0]);
   rte_eal_mp_wait_lcore();
@@ -257,6 +261,7 @@ void destroy_smto(struct smto *smto) {
     rte_eth_dev_close(port_id);
   }
 
+  free(worker_params);
   rte_eal_cleanup();
   zlog_fini();
   free(smto);

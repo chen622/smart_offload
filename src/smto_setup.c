@@ -99,6 +99,8 @@ int init_port(uint16_t port_id) {
     return SMTO_ERROR_DEVICE_CONFIGURE;
   }
 
+  zlog_info(smto_cb->logger, "finish setup port: %s %s", dev_info.device->name, dev_info.driver_name);
+
   return SMTO_SUCCESS;
 
 //  /// Starting the port

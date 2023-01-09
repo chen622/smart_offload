@@ -25,7 +25,6 @@
 
 #include "internal/smto_flow_engine.h"
 
-
 extern struct smto *smto_cb;
 
 enum layer_name {
@@ -212,7 +211,7 @@ struct rte_flow *create_general_offload_flow(uint16_t port_id,
     };
     pattern[L4].spec = &udp_pattern;
   } else {
-    zlog_error(smto_cb->logger, "unsupported l4 proto type %u", flow_key->proto);
+    zlog_error(smto_cb->logger, "unsupported l4 proto type %u", flow_key->tuple.proto);
     return flow;
   }
 
@@ -262,5 +261,35 @@ struct rte_flow *create_general_offload_flow(uint16_t port_id,
 }
 
 int create_flow_loop(void *args) {
+  void *flow_rules[5];
+  uint32_t result = 0;
+  uint32_t remain = 0;
+  struct smto_flow_key *flow_key = NULL;
+  char pkt_info[MAX_PKT_INFO_LENGTH];
+
+  while (smto_cb->is_running) {
+    result = rte_ring_dequeue_burst(smto_cb->flow_rules_ring, flow_rules, 5, &remain);
+    for (uint32_t i = 0; i < result; ++i) {
+      flow_key = (struct smto_flow_key *) flow_rules[i];
+      struct rte_flow_error error;
+      struct rte_flow *flow = create_general_offload_flow(smto_cb->ports[0], flow_key, &error);
+      if (flow == NULL) {
+        dump_pkt_info(&flow_key->tuple, -1, pkt_info, MAX_PKT_INFO_LENGTH);
+        zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
+        continue;
+      }
+      flow_key->flow = flow;
+      flow_key->is_offload = true;
+
+      flow = create_general_offload_flow(smto_cb->ports[0], flow_key->symmetrical_flow_key, &error);
+      if (flow == NULL) {
+        dump_pkt_info(&flow_key->tuple, -1, pkt_info, MAX_PKT_INFO_LENGTH);
+        zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
+        continue;
+      }
+      flow_key->symmetrical_flow_key->flow = flow;
+      flow_key->symmetrical_flow_key->is_offload = true;
+    }
+  }
   return 0;
 }

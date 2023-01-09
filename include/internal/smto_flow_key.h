@@ -70,19 +70,17 @@ struct smto_flow_key {
   volatile uint32_t packet_amount; ///< Total amount of packets in a flow.
   uint16_t new_port;
   bool is_offload; ///< Has created rte_flow to offload flow or not
+  struct smto_flow_key *symmetrical_flow_key;
 };
-
-
-
 
 /**
  * Return a format string of ipv4 5-tuple.
  *
  * @param key The key want to print.
- * @param qi The id of queue.
+ * @param qi The id of queue, negative means ignore.
  * @param result The result string.
  * @param result_size The max length of result string.
  */
-    void dump_pkt_info(struct rdarm_five_tuple *key, uint16_t qi, char *result, int result_length);
+void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int result_length);
 
 #endif //SMART_OFFLOAD_INCLUDE_INTERNAL_SMTO_FLOW_KEY_H_

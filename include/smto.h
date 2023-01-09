@@ -59,13 +59,13 @@
 #define MAX_BULK_SIZE 32
 
 /// The max amount of ring to transfer flow rules.
-#define MAX_RING_ENTRIES 1024*16
+#define MAX_RING_ENTRIES (1024*16)
 
 /// The amount of packets to create a flow rule.
 #define PKT_AMOUNT_TO_OFFLOAD 5
 
 /// The seconds to timeout
-#define FLOW_TIMEOUT_SECOND 200
+#define FLOW_TIMEOUT_SECOND 10
 
 extern const uint32_t SRC_IP;
 

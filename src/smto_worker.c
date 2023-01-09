@@ -66,7 +66,7 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
 
     char pkt_info[MAX_PKT_INFO_LENGTH];
 #ifndef RELEASE
-    dump_pkt_info(&tuple.tuple, -2, pkt_info, MAX_PKT_INFO_LENGTH);
+    dump_pkt_info(&tuple.tuple, queue_index, pkt_info, MAX_PKT_INFO_LENGTH);
 #endif
     struct smto_flow_key *flow_key = 0;
     ret = rte_hash_lookup_data(smto_cb->flow_hash_map, &tuple.tuple, (void **) &flow_key);
@@ -74,6 +74,8 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
     if (ret == -ENOENT) { ///< A flow that has not appeared
       // Out-direction flow
       flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
+      struct smto_flow_key *symmetrical_flow_key = rte_zmalloc("flow_key", sizeof(struct smto_flow_key), 0);
+
       rte_memcpy(&flow_key->tuple, &tuple, sizeof(tuple));
       flow_key->create_at = rte_rdtsc();
       flow_key->packet_amount++;
@@ -88,15 +90,16 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
       } else {
         zlog_debug(smto_cb->logger, "success add a flow(%s) to flow hash table", pkt_info);
       }
-
       // In-direction flow
 
-      rdarm_five_tuple in_tuple = flow_key->tuple;
-      in_tuple.ip1 = flow_key->tuple.ip2;
-      in_tuple.port1 = flow_key->tuple.port2;
-      in_tuple.ip2 = rte_cpu_to_be_32(SRC_IP);
-      in_tuple.port2 = rte_cpu_to_be_16(flow_key->new_port);
-      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, &in_tuple, flow_key);
+      symmetrical_flow_key->tuple = flow_key->tuple;
+      symmetrical_flow_key->tuple.ip1 = flow_key->tuple.ip2;
+      symmetrical_flow_key->tuple.port1 = flow_key->tuple.port2;
+      symmetrical_flow_key->tuple.ip2 = rte_cpu_to_be_32(SRC_IP);
+      symmetrical_flow_key->tuple.port2 = rte_cpu_to_be_16(flow_key->new_port);
+      symmetrical_flow_key->symmetrical_flow_key = flow_key;
+      ret = rte_hash_add_key_data(smto_cb->flow_hash_map, &symmetrical_flow_key->tuple, symmetrical_flow_key);
+      flow_key->symmetrical_flow_key = symmetrical_flow_key;
       if (ret != 0) {
         zlog_error(smto_cb->logger, "cannot add pkt(%s) into flow table: %s", pkt_info, rte_strerror(ret));
         return SMTO_ERROR_HASH_MAP_OPERATION;
@@ -113,19 +116,24 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
                  flow_key->flow_size);
 
       /* Assume the flow can be offloaded now */
-      if (PKT_AMOUNT_TO_OFFLOAD != -1 && flow_key->packet_amount >= PKT_AMOUNT_TO_OFFLOAD && !flow_key->is_offload) {
+      if (PKT_AMOUNT_TO_OFFLOAD != -1 && flow_key->packet_amount == PKT_AMOUNT_TO_OFFLOAD && !flow_key->is_offload) {
+        /// Decouple the packet processing and offloading
 //        uint64_t start_time = rte_rdtsc();
-//        rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
+        rte_ring_enqueue(smto_cb->flow_rules_ring, flow_key);
 //        queue_used_times[used_times_index] = GET_NANOSECOND(start_time);
 
+        /// Offload the flow directly
 //        start_time = rte_rdtsc();
-        struct rte_flow_error flow_error = {0};
-        struct rte_flow *flow = create_general_offload_flow(port_id, flow_key, &flow_error);
-        if (flow == NULL) {
-          zlog_error(smto_cb->logger, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
-          return SMTO_ERROR_FLOW_CREATE;
-        }
+//        struct rte_flow_error flow_error = {0};
+//        struct rte_flow *flow = create_general_offload_flow(port_id, &flow_key->tuple, &flow_error);
+//        if (flow == NULL) {
+//          zlog_error(smto_cb->logger, "cannot create a offload flow of packet(%s): %s", pkt_info, flow_error.message);
+//          return SMTO_ERROR_FLOW_CREATE;
+//        }
 //        flow_used_times[used_times_index++] = GET_NANOSECOND(start_time);
+//        flow_key->is_offload = true;
+//        flow_key->flow = flow;
+
 //        if (used_times_index % 10000 == 0) {
 //          zlog_info(smto_cb->logger, "create %u flows", used_times_index);
 //        }
@@ -141,8 +149,7 @@ static __rte_always_inline int packet_processing(struct rte_mbuf *pkt_mbuf, uint
 //          smto_cb->is_running = false;
 //          return SMTO_SUCCESS;
 //        }
-        flow_key->is_offload = true;
-        flow_key->flow = flow;
+
       }
       return SMTO_SUCCESS;
     } else {
