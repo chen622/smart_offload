@@ -26,7 +26,7 @@
 #include <rte_byteorder.h>
 #include "internal/smto_flow_key.h"
 
-void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int result_length) {
+void dump_pkt_info(struct rdarm_five_tuple *key,uint16_t port_id, int qi, char *result, int result_length) {
   uint32_t src_ip = rte_be_to_cpu_32(key->ip1);
   uint32_t dst_ip = rte_be_to_cpu_32(key->ip2);
   uint16_t src_port = rte_be_to_cpu_16(key->port1);
@@ -34,7 +34,7 @@ void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int resul
   uint8_t proto = key->proto;
 
   if (qi >= 0) {
-    snprintf(result, result_length, "%d.%d.%d.%d:%u-(%u)-%d.%d.%d.%d:%u - queue=0x%x",
+    snprintf(result, result_length, "%d.%d.%d.%d:%u-(%u)-%d.%d.%d.%d:%u - p%uq%d",
              (src_ip >> 24) & 0x000000ff,
              (src_ip >> 16) & 0x000000ff,
              (src_ip >> 8) & 0x000000ff,
@@ -43,9 +43,10 @@ void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int resul
              (dst_ip >> 16) & 0x000000ff,
              (dst_ip >> 8) & 0x000000ff,
              (dst_ip) & 0x000000ff, dst_port,
-             (int) qi);
+             port_id,
+             qi);
   } else {
-    snprintf(result, result_length, "%d.%d.%d.%d:%u-(%u)-%d.%d.%d.%d:%u",
+    snprintf(result, result_length, "%d.%d.%d.%d:%u-(%u)-%d.%d.%d.%d:%u - p%u",
              (src_ip >> 24) & 0x000000ff,
              (src_ip >> 16) & 0x000000ff,
              (src_ip >> 8) & 0x000000ff,
@@ -53,6 +54,6 @@ void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int resul
              (dst_ip >> 24) & 0x000000ff,
              (dst_ip >> 16) & 0x000000ff,
              (dst_ip >> 8) & 0x000000ff,
-             (dst_ip) & 0x000000ff, dst_port);
+             (dst_ip) & 0x000000ff, dst_port, port_id);
   }
 }

@@ -26,7 +26,6 @@
 
 extern struct smto *smto_cb;
 
-
 int init_port(uint16_t port_id) {
   int ret = 0;
 
@@ -166,6 +165,22 @@ int setup_one_port_hairpin(int port_id) {
   if (ret != 0) {
     return SMTO_ERROR_HAIRPIN_SETUP;
   }
+  return SMTO_SUCCESS;
+}
+
+int setup_two_port_hairpin(int port_id, int peer_port_id) {
+  int ret;
+
+  /// Setup hairpin queues
+  ret = setup_hairpin_queues(port_id, peer_port_id);
+  if (ret != 0) {
+    return SMTO_ERROR_HAIRPIN_SETUP;
+  }
+  ret = setup_hairpin_queues(peer_port_id, port_id);
+  if (ret != 0) {
+    return SMTO_ERROR_HAIRPIN_SETUP;
+  }
+
   return SMTO_SUCCESS;
 }
 

@@ -29,7 +29,7 @@
 #include "internal/smto_event.h"
 #include "internal/smto_flow_key.h"
 
-const uint32_t SRC_IP = RTE_IPV4(100, 1000, 1, 1);
+const uint32_t SRC_IP = RTE_IPV4(5, 1, 1, 1);
 
 /// The global control block of SmartOffload.
 struct smto *smto_cb = 0;
@@ -84,11 +84,15 @@ int init_smto(struct smto **smto) {
 
   /// Config port and setup hairpin mode
   if (port_quantity == 1) {
-    zlog_debug(smto_cb->logger, "single port mode");
+    zlog_info(smto_cb->logger, "single port mode");
     smto_cb->mode = SINGLE_PORT_MODE;
     smto_cb->ports[0] = rte_eth_find_next_owned_by(0, RTE_ETH_DEV_NO_OWNER);
     init_port(smto_cb->ports[0]);
-    setup_one_port_hairpin(smto_cb->ports[0]);
+    ret = setup_one_port_hairpin(smto_cb->ports[0]);
+    if (ret != 0) {
+      zlog_error(smto_cb->logger, "failed to setup hairpin for port %d", smto_cb->ports[0]);
+      goto err;
+    }
     /// Start the ports
     ret = rte_eth_dev_start(smto_cb->ports[0]);
     if (ret < 0) {
@@ -104,16 +108,57 @@ int init_smto(struct smto **smto) {
       goto err;
     }
   } else {
-    zlog_error(smto_cb->logger, "dual port hairpin unsupported");
-    goto err;
+    zlog_info(smto_cb->logger, "dual port mode");
+    smto_cb->mode = DOUBLE_PORT_MODE;
+    smto_cb->ports[0] = rte_eth_find_next_owned_by(0, RTE_ETH_DEV_NO_OWNER);
+    smto_cb->ports[1] = rte_eth_find_next_owned_by(smto_cb->ports[0] + 1, RTE_ETH_DEV_NO_OWNER);
+    init_port(smto_cb->ports[0]);
+    init_port(smto_cb->ports[1]);
+    ret = setup_two_port_hairpin(smto_cb->ports[0], smto_cb->ports[1]);
+    if (ret != 0) {
+      zlog_error(smto_cb->logger,
+                 "failed to setup dual port hairpin for port %d and %d",
+                 smto_cb->ports[0],
+                 smto_cb->ports[1]);
+      goto err;
+    }
+    ret = rte_eth_dev_start(smto_cb->ports[0]);
+    if (ret < 0) {
+      zlog_error(smto_cb->logger,
+                 "failed to start network device: err: %s, port=%u",
+                 rte_strerror(ret),
+                 smto_cb->ports[0]);
+      goto err;
+    }
+    ret = rte_eth_dev_start(smto_cb->ports[1]);
+    if (ret < 0) {
+      zlog_error(smto_cb->logger,
+                 "failed to start network device: err: %s, port=%u",
+                 rte_strerror(ret),
+                 smto_cb->ports[1]);
+      goto err;
+    }
 
-//    /* Initialize the network port and do some configure */
-//    uint16_t port_id = 0;
-//    RTE_ETH_FOREACH_DEV_OWNED_BY(port_id, 0) {
-//      smto_cb->ports[port_id] = port_id;
-//      init_port(port_id, mbuf_pool);
-//    }
-//    setup_two_port_hairpin();
+    /* Let's find our peer RX ports, TXQ -> RXQ. */
+    ret = rte_eth_hairpin_bind(smto_cb->ports[0], smto_cb->ports[1]);
+    if (ret) {
+      zlog_error(smto_cb->logger,
+                 "can not bind the hairpin queues of port %d-%d: %s",
+                 smto_cb->ports[0],
+                 smto_cb->ports[1],
+                 rte_strerror(ret));
+      goto err;
+    }
+    /* Let's find our peer TX ports, RXQ -> TXQ. */
+    ret = rte_eth_hairpin_bind(smto_cb->ports[1], smto_cb->ports[0]);
+    if (ret) {
+      zlog_error(smto_cb->logger,
+                 "can not bind the hairpin queues of port %d-%d: %s",
+                 smto_cb->ports[0],
+                 smto_cb->ports[1],
+                 rte_strerror(ret));
+      goto err;
+    }
   }
 
   /// Create default jump and rss flow
@@ -207,7 +252,16 @@ int init_smto(struct smto **smto) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
         goto err5;
       }
-    } else if (index == GENERAL_QUEUES_QUANTITY) { // The worker to create flow
+    } else if (smto_cb->mode == DOUBLE_PORT_MODE && index < 2 * GENERAL_QUEUES_QUANTITY) {
+      worker_params[index].port_id = smto_cb->ports[1];
+      worker_params[index].queue_id = index - GENERAL_QUEUES_QUANTITY;
+
+      if (rte_eal_remote_launch(process_loop, &worker_params[index], lcore_id) != 0) {
+        ret = SMTO_ERROR_WORKER_LAUNCH;
+        goto err5;
+      }
+    } else if ((smto_cb->mode == SINGLE_PORT_MODE && index == GENERAL_QUEUES_QUANTITY)
+        || (smto_cb->mode == DOUBLE_PORT_MODE && index == GENERAL_QUEUES_QUANTITY * 2)) { // The worker to create flow
       if (rte_eal_remote_launch(create_flow_loop, NULL, lcore_id) != 0) {
         ret = SMTO_ERROR_WORKER_LAUNCH;
         goto err5;

@@ -50,6 +50,12 @@
 
 typedef __m128i xmm_t;
 
+enum offload_status {
+  NOT_OFFLOAD = 0,
+  OFFLOADING = 1,
+  OFFLOAD_SUCCESS = 2,
+};
+
 struct smto_flow_key {
   union {
     struct rdarm_five_tuple tuple; ///< The tuple to identify a flow.
@@ -64,12 +70,13 @@ struct smto_flow_key {
     }; ///< The struct to load tuple from mbuf.
     xmm_t xmm;
   };
+  struct rdarm_five_tuple modify_tuple;
   struct rte_flow *flow;
   volatile uint64_t create_at; ///< Use the number of cycles of CPU as the time.
   volatile uint32_t flow_size; ///< Total size of packets in this flow.
   volatile uint32_t packet_amount; ///< Total amount of packets in a flow.
-  uint16_t new_port;
-  bool is_offload; ///< Has created rte_flow to offload flow or not
+//  uint16_t new_port;
+  enum offload_status is_offload; ///< Has created rte_flow to offload flow or not
   struct smto_flow_key *symmetrical_flow_key;
 };
 
@@ -77,10 +84,11 @@ struct smto_flow_key {
  * Return a format string of ipv4 5-tuple.
  *
  * @param key The key want to print.
+ * @param port_id The port id of this pkt.
  * @param qi The id of queue, negative means ignore.
  * @param result The result string.
  * @param result_size The max length of result string.
  */
-void dump_pkt_info(struct rdarm_five_tuple *key, int qi, char *result, int result_length);
+void dump_pkt_info(struct rdarm_five_tuple *key, uint16_t port_id, int qi, char *result, int result_length);
 
 #endif //SMART_OFFLOAD_INCLUDE_INTERNAL_SMTO_FLOW_KEY_H_

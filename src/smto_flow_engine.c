@@ -267,6 +267,7 @@ int create_flow_loop(void *args) {
   struct smto_flow_key *flow_key = NULL;
   char pkt_info[MAX_PKT_INFO_LENGTH];
 
+  zlog_info(smto_cb->logger, "worker%d for flow engine start working!", rte_lcore_id());
   while (smto_cb->is_running) {
     result = rte_ring_dequeue_burst(smto_cb->flow_rules_ring, flow_rules, 5, &remain);
     for (uint32_t i = 0; i < result; ++i) {
@@ -274,21 +275,33 @@ int create_flow_loop(void *args) {
       struct rte_flow_error error;
       struct rte_flow *flow = create_general_offload_flow(smto_cb->ports[0], flow_key, &error);
       if (flow == NULL) {
-        dump_pkt_info(&flow_key->tuple, -1, pkt_info, MAX_PKT_INFO_LENGTH);
+        dump_pkt_info(&flow_key->tuple, smto_cb->ports[0], -1, pkt_info, MAX_PKT_INFO_LENGTH);
         zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
+        flow_key->is_offload = NOT_OFFLOAD;
         continue;
       }
       flow_key->flow = flow;
-      flow_key->is_offload = true;
+      flow_key->is_offload = OFFLOAD_SUCCESS;
 
-      flow = create_general_offload_flow(smto_cb->ports[0], flow_key->symmetrical_flow_key, &error);
-      if (flow == NULL) {
-        dump_pkt_info(&flow_key->tuple, -1, pkt_info, MAX_PKT_INFO_LENGTH);
-        zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
-        continue;
+      if (smto_cb->mode == SINGLE_PORT_MODE) { /// Create a flow for symmetrical flow on the same port.
+        flow = create_general_offload_flow(smto_cb->ports[0], flow_key->symmetrical_flow_key, &error);
+        if (flow == NULL) {
+          dump_pkt_info(&flow_key->tuple, smto_cb->ports[0], -1, pkt_info, MAX_PKT_INFO_LENGTH);
+          zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
+          flow_key->symmetrical_flow_key->is_offload = NOT_OFFLOAD;
+          continue;
+        }
+      } else if (smto_cb->mode == DOUBLE_PORT_MODE) { /// Create a flow for symmetrical flow on the other port.
+        flow = create_general_offload_flow(smto_cb->ports[1], flow_key->symmetrical_flow_key, &error);
+        if (flow == NULL) {
+          dump_pkt_info(&flow_key->tuple, smto_cb->ports[1], -1, pkt_info, MAX_PKT_INFO_LENGTH);
+          zlog_error(smto_cb->logger, "failed to create a flow(%s): %s", pkt_info, error.message);
+          flow_key->symmetrical_flow_key->is_offload = NOT_OFFLOAD;
+          continue;
+        }
       }
       flow_key->symmetrical_flow_key->flow = flow;
-      flow_key->symmetrical_flow_key->is_offload = true;
+      flow_key->symmetrical_flow_key->is_offload = OFFLOAD_SUCCESS;
     }
   }
   return 0;

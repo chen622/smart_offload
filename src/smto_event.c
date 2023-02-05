@@ -41,8 +41,8 @@ int query_counter(uint16_t port_id, struct rte_flow *flow, struct rte_flow_query
       }
   };
   if (rte_flow_query(port_id, flow, actions, counter, error)) {
-    zlog_category_t *zc = zlog_get_category("flow_event");
-    zlog_error(zc, "cannot get the result of counter: %s", error->message);
+//    zlog_category_t *zc = zlog_get_category("flow_event");
+//    zlog_error(zc, "cannot get the result of counter: %s", error->message);
     return SMTO_ERROR_FLOW_QUERY;
   }
   return 0;
@@ -79,17 +79,17 @@ void delete_timeout_flows(void *params) {
       continue;
     }
     flow_key = (struct smto_flow_key *) flow_keys[i];
-    uint16_t queue_index = -1;
-    dump_pkt_info(&flow_key->tuple, queue_index, flow_key_str, MAX_PKT_INFO_LENGTH);
+    int queue_index = -1;
+    dump_pkt_info(&flow_key->tuple, port_id, queue_index, flow_key_str, MAX_PKT_INFO_LENGTH);
     if (flow_key->flow == NULL) {
-      zlog_error(smto_cb->logger, "cannot get the rte_flow of packet(%s)", flow_key_str);
+      zlog_error(smto_cb->logger, "cannot get the rte_flow of flow(%s)", flow_key_str);
     } else {
 
       /// Query the counter of the timeout flow
       struct rte_flow_query_count counter = {0};
       ret = query_counter(port_id, flow_key->flow, &counter, &flow_error);
       if (ret != 0) {
-        zlog_error(smto_cb->logger, "cannot query the counter of a timeout flow: %s", flow_error.message);
+        zlog_error(smto_cb->logger, "cannot query the counter of a timeout flow(%s): %s",flow_key_str, flow_error.message);
       } else {
         zlog_info(smto_cb->logger,
                   "flow(%s) timeout, total has %lu packets, fast-path has %lu packets and slow-path has %u packets.",
@@ -102,9 +102,9 @@ void delete_timeout_flows(void *params) {
       /// Delete the flow from nic
       ret = rte_flow_destroy(port_id, flow_key->flow, &flow_error);
       if (ret) {
-        zlog_error(smto_cb->logger, "cannot remove a offload rte_flow from nic: %s", flow_error.message);
+        zlog_error(smto_cb->logger, "flow(%s) cannot be delete from nic: %s", flow_key_str, flow_error.message);
       } else {
-        flow_key->is_offload = false;
+        flow_key->is_offload = NOT_OFFLOAD;
         zlog_info(smto_cb->logger, "flow(%s) has been delete because timeout", flow_key_str);
       }
     }
@@ -142,5 +142,5 @@ int register_aged_event(uint16_t port_id) {
 int unregister_aged_event(uint16_t port_id) {
   rte_eal_alarm_cancel(delete_timeout_flows, (void *) (intptr_t) port_id);
   return rte_eth_dev_callback_unregister(port_id, RTE_ETH_EVENT_FLOW_AGED,
-                                  aged_event_callback, NULL);
+                                         aged_event_callback, NULL);
 }

@@ -58,6 +58,8 @@ int init_port(uint16_t port_id);
  */
 int setup_one_port_hairpin(int port_id);
 
+int setup_two_port_hairpin(int port_id, int peer_port_id);
+
 /**
  * Free the memory of flows in the hash map and free the flow hash map.
  *
